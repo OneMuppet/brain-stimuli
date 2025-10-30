@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "dist",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "checkJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "isolatedModules": true,
+    "lib": ["ES2022"],
+    "noEmit": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/libs/*": ["src/libs/*"],
+      "@/handlers/*": ["src/handlers/*"],
+      "@/types/*": ["src/types/*"],
+      "@/tests/*": ["tests/*"]
+    },
+    "types": ["sst", "@types/aws-lambda", "jest", "node"]
+  },
+  "include": ["src/**/*", "tests/**/*", "sst.config.ts"],
+  "exclude": ["node_modules", ".sst", "coverage", "lib"]
+}
