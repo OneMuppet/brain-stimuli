@@ -291,6 +291,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                     height: 0;
                     pointer-events: none;
                 }
+                
+                /* Cursor visibility */
+                .tiptap {
+                    caret-color: rgb(0, 245, 255);
+                }
+                
+                .tiptap * {
+                    caret-color: rgb(0, 245, 255);
+                }
             `}</style>
         </div>
     );

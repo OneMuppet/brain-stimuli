@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { getLevel } from "@/lib/scoring";
 import { listSessions } from "@/lib/db";
+import { resetSyncState } from "@/lib/resetSync";
 
 export function SignIn() {
   const { data: session, status } = useSession();
@@ -365,6 +366,29 @@ export function SignIn() {
                   </div>
                 </motion.div>
 
+                {/* Reset Sync Button (Emergency) */}
+                <motion.button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (
+                      confirm(
+                        "Reset sync state? This will clear all sync timestamps and force a full sync on next sync."
+                      )
+                    ) {
+                      await resetSyncState();
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full relative px-3 py-1 text-[8px] font-mono tracking-wider uppercase text-cyan-400/40 hover:text-cyan-400/60 transition-colors text-center mb-2"
+                  initial={{ y: 5, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.15, delay: 0.16 }}
+                  style={{ touchAction: "manipulation" }}
+                  title="Reset sync state (emergency only)"
+                >
+                  <span className="relative z-10">[RESET SYNC]</span>
+                </motion.button>
+
                 {/* Disconnect Button */}
                 <motion.button
                   onClick={(e) => {
@@ -374,11 +398,14 @@ export function SignIn() {
                   className="w-full relative px-3 py-1.5 text-[10px] font-mono tracking-wider uppercase text-red-400/80 hover:text-red-400 transition-colors text-center"
                   initial={{ y: 5, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.15, delay: 0.16 }}
+                  transition={{ duration: 0.15, delay: 0.18 }}
+                  style={{ touchAction: "manipulation" }}
                 >
                   <span className="relative z-10">Disconnect</span>
-                  <div className="absolute inset-0 border border-red-400/20 hover:border-red-400/40 hover:bg-red-400/5 transition-all"
-                    style={{ borderRadius: "var(--r)" }} />
+                  <div
+                    className="absolute inset-0 border border-red-400/20 hover:border-red-400/40 hover:bg-red-400/5 transition-all"
+                    style={{ borderRadius: "var(--r)" }}
+                  />
                 </motion.button>
               </motion.div>
             )}
@@ -456,6 +483,7 @@ export function SignIn() {
     <button
       onClick={() => signIn("google")}
       className="btn-neon-outline hover-lock px-4 py-2"
+      style={{ touchAction: "manipulation" }}
     >
       SIGN IN WITH GOOGLE
     </button>

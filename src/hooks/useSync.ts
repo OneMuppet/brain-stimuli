@@ -30,18 +30,9 @@ export function useSync() {
   const hasInitialSyncedRef = useRef(false);
 
   useEffect(() => {
-    console.log("🔐 useSync: Session status:", {
-      hasSession: !!session,
-      sessionUser: session?.user?.email || "none",
-      isAuthenticated: !!session,
-    });
-    
     if (!session) {
-      console.log("⚠️ useSync: No session, skipping sync setup");
       return;
     }
-
-    console.log("✅ useSync: Setting up sync for authenticated user:", session.user?.email);
 
     // Monitor online/offline status
     const handleOnline = async () => {
@@ -63,7 +54,6 @@ export function useSync() {
     // Initial sync only once (on mount)
     if (!hasInitialSyncedRef.current) {
       hasInitialSyncedRef.current = true;
-      console.log("🚀 useSync: Starting initial sync...");
       performSync();
     }
 
@@ -89,13 +79,10 @@ export function useSync() {
       const localSessions = await db.listSessions();
       const isLocalEmpty = localSessions.length === 0;
       
-      console.log("🔄 Starting sync, lastSync:", lastSync, "localEmpty:", isLocalEmpty);
-      
       // Step 1: Get cloud delta FIRST (or full data if first sync or local is empty)
       // If local database is empty, force full sync to restore all data
       const shouldFullSync = lastSync === 0 || isLocalEmpty;
       const sinceParam = shouldFullSync ? "full=true" : `since=${lastSync}`;
-      console.log("📥 Fetching from cloud:", sinceParam, shouldFullSync ? "(forced full sync - local empty)" : "");
       const cloudResponse = await fetch(`/api/sync?${sinceParam}`, {
         credentials: "include", // Ensure cookies are sent
         headers: {
@@ -113,21 +100,8 @@ export function useSync() {
       const cloudDelta = responseData.delta || responseData.data;
       const syncTimestamp = responseData.syncTimestamp || Date.now();
       
-      console.log("📦 Cloud data received:", {
-        hasData: !!responseData.data,
-        hasDelta: !!responseData.delta,
-        sessions: cloudDelta?.sessions?.created?.length || 0,
-        notes: cloudDelta?.notes?.created?.length || 0,
-        images: cloudDelta?.images?.created?.length || 0,
-      });
-      
       // Step 2: Generate local delta (after fetching cloud, so we know what's new)
       const localDelta = await generateLocalDelta(lastSync);
-      console.log("📤 Local delta:", {
-        sessions: localDelta.sessions.created.length + localDelta.sessions.updated.length,
-        notes: localDelta.notes.created.length + localDelta.notes.updated.length,
-        images: localDelta.images.created.length,
-      });
       
       // Step 3: Apply cloud changes locally (with conflict resolution)
       if (cloudDelta) {
@@ -157,14 +131,6 @@ export function useSync() {
           };
           
           const { conflicts } = await applyCloudDelta(fullDelta, "last-write-wins");
-          console.log("✅ Applied cloud data locally", {
-            conflicts: conflicts.length,
-            sessionsApplied: fullDelta.sessions.created.length + fullDelta.sessions.updated.length,
-            notesApplied: fullDelta.notes.created.length + fullDelta.notes.updated.length,
-          });
-          if (conflicts.length > 0) {
-            console.warn("Conflicts resolved:", conflicts);
-          }
           
           // Restore missing image blobs after applying metadata (full sync)
           const imagesNeedingRestoration: any[] = [];
@@ -181,41 +147,26 @@ export function useSync() {
           }
           
           if (imagesNeedingRestoration.length > 0) {
-            console.log(`📥 Restoring ${imagesNeedingRestoration.length} image blobs from Drive (full sync)...`);
             const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
               try {
                 const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`, {
                   credentials: "include", // Ensure cookies are sent
                 });
                 if (response.ok) {
-                  console.log(`✅ Restored image: ${imageMeta.id}`);
                   return true;
                 } else {
-                  const errorText = await response.text();
-                  console.error(`❌ Failed to restore image ${imageMeta.id}:`, errorText);
                   return false;
                 }
               } catch (error) {
-                console.error(`❌ Error restoring image ${imageMeta.id}:`, error);
                 return false;
               }
             });
             
-            const results = await Promise.all(restorePromises);
-            const successCount = results.filter(r => r).length;
-            console.log(`✅ Restored ${successCount}/${imagesNeedingRestoration.length} images`);
+            await Promise.all(restorePromises);
           }
         } else if (cloudDelta) {
           // Delta sync - apply only changes
           const { conflicts } = await applyCloudDelta(cloudDelta, "last-write-wins");
-          console.log("✅ Applied cloud delta locally", {
-            conflicts: conflicts.length,
-            sessionsApplied: (cloudDelta.sessions?.created?.length || 0) + (cloudDelta.sessions?.updated?.length || 0),
-            notesApplied: (cloudDelta.notes?.created?.length || 0) + (cloudDelta.notes?.updated?.length || 0),
-          });
-          if (conflicts.length > 0) {
-            console.warn("Conflicts resolved:", conflicts);
-          }
           
           // Restore missing image blobs after applying metadata
           // Check which images actually need restoration (not in local DB)
@@ -233,7 +184,6 @@ export function useSync() {
           }
           
           if (imagesNeedingRestoration.length > 0) {
-            console.log(`📥 Restoring ${imagesNeedingRestoration.length} image blobs from Drive...`);
             // Restore images in parallel (but with some limit to avoid overwhelming)
             const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
               try {
@@ -241,22 +191,16 @@ export function useSync() {
                   credentials: "include", // Ensure cookies are sent
                 });
                 if (response.ok) {
-                  console.log(`✅ Restored image: ${imageMeta.id}`);
                   return true;
                 } else {
-                  const errorText = await response.text();
-                  console.error(`❌ Failed to restore image ${imageMeta.id}:`, errorText);
                   return false;
                 }
               } catch (error) {
-                console.error(`❌ Error restoring image ${imageMeta.id}:`, error);
                 return false;
               }
             });
             
-            const results = await Promise.all(restorePromises);
-            const successCount = results.filter(r => r).length;
-            console.log(`✅ Restored ${successCount}/${imagesNeedingRestoration.length} images`);
+            await Promise.all(restorePromises);
           }
         }
       }
@@ -278,7 +222,6 @@ export function useSync() {
         ].filter((img: any) => !img.driveFileId);
         
         if (imagesToUpload.length > 0) {
-          console.log(`📤 Uploading ${imagesToUpload.length} image blobs to Drive before sync...`);
           for (const imageMeta of imagesToUpload) {
             try {
               // Get the full image from local DB to get the blob
@@ -299,7 +242,6 @@ export function useSync() {
                 
                 if (uploadResponse.ok) {
                   const result = await uploadResponse.json();
-                  console.log(`✅ Uploaded image to Drive: ${image.id} -> ${result.driveFileId}`);
                   // Update local image with driveFileId (this also updates syncTimestamp)
                   await db.updateImage(image.id, { 
                     driveFileId: result.driveFileId,
@@ -311,13 +253,10 @@ export function useSync() {
                   if (imgInDelta) {
                     imgInDelta.driveFileId = result.driveFileId;
                   }
-                } else {
-                  const errorText = await uploadResponse.text();
-                  console.error(`❌ Failed to upload image ${image.id}:`, errorText);
                 }
               }
             } catch (error) {
-              console.error(`❌ Error uploading image ${imageMeta.id}:`, error);
+              // Silent error handling
             }
           }
         }
@@ -365,9 +304,8 @@ export function useSync() {
         error: null,
       }));
       
-      console.log("✅ Sync completed successfully");
     } catch (error) {
-      console.error("❌ Sync failed:", error);
+      // Silent error handling - error state is tracked in syncState
       setSyncState(prev => ({
         ...prev,
         isSyncing: false,

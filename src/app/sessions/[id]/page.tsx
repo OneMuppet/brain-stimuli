@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ImageGallery } from "@/components/ImageGallery";
+import { useSession } from "next-auth/react";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { NoteEditor } from "@/components/NoteEditor";
 import {
   createImage,
@@ -17,7 +18,6 @@ import {
   type Session,
   updateNote,
   updateSession,
-  deleteImage,
   getImageUrl,
 } from "@/lib/db";
 import { convertImageIdsToBlobUrls } from "@/lib/noteImageUtils";
@@ -33,9 +33,23 @@ const XP_PER_NOTE = 5;
 const XP_PER_IMAGE = 10;
 
 export default function SessionDetailPage() {
+  const { data: session: authSession, status } = useSession();
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+
+  // Show welcome screen if not authenticated
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-white text-xl mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!authSession) {
+    return <WelcomeScreen />;
+  }
 
   const [session, setSession] = useState<Session | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -90,7 +104,7 @@ export default function SessionDetailPage() {
       const updated = await updateSession(sessionId, { score: newScore });
       if (updated) setSession(updated);
     } catch (error) {
-      console.error("Failed to save image:", error);
+      // Silent error handling
     }
   };
 
@@ -112,20 +126,10 @@ export default function SessionDetailPage() {
       const updated = await updateSession(sessionId, { score: newScore });
       if (updated) setSession(updated);
     } catch (error) {
-      console.error("Failed to save note:", error);
+      // Silent error handling
     }
   };
 
-  // Image deletion
-  const handleImageDelete = async (id: string) => {
-    try {
-      await deleteImage(id);
-      const updated = await listImages(sessionId);
-      setImages(updated);
-    } catch (e) {
-      console.error("Failed to delete screenshot", e);
-    }
-  };
 
   // Auto-clear XP bubble
   useEffect(() => {
@@ -170,14 +174,14 @@ export default function SessionDetailPage() {
       setNotes(processedNotes);
       setImages(imagesData);
     } catch (error) {
-      console.error("Failed to load session:", error);
+      // Silent error handling
     } finally {
       setLoading(false);
     }
   }, [sessionId]);
 
   useEffect(() => {
-    loadSessionData().catch(console.error);
+    loadSessionData().catch(() => {});
   }, [loadSessionData]);
 
   // Refresh note content when images are restored (e.g., after sync)
@@ -189,7 +193,6 @@ export default function SessionDetailPage() {
     
     // Only refresh if images were added (restored from cloud)
     if (notes.length > 0 && currentImageCount > prevImageCount && prevImageCount > 0 && noteEditorRef.current?.editor) {
-      console.log(`🔄 Images restored (${prevImageCount} -> ${currentImageCount}), refreshing note content...`);
       // Re-convert image IDs to blob URLs in case new images were restored
       (async () => {
         const note = notes[0];
@@ -197,11 +200,10 @@ export default function SessionDetailPage() {
           const processedContent = await convertImageIdsToBlobUrls(note.content, images);
           // Only update if content changed (e.g., missing images were restored)
           if (processedContent !== note.content) {
-            console.log(`✅ Refreshed note content with restored images`);
             noteEditorRef.current?.editor?.commands.setContent(processedContent);
           }
         }
-      })().catch(console.error);
+      })().catch(() => {});
     }
   }, [notes, images]);
 
@@ -266,7 +268,11 @@ export default function SessionDetailPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4 mt-2">
-          <Link href="/" className="btn-neon-outline hover-lock text-sm">
+          <Link
+            href="/"
+            className="btn-neon-outline hover-lock text-sm"
+            style={{ touchAction: "manipulation" }}
+          >
             ← BACK
           </Link>
         </div>
@@ -292,18 +298,6 @@ export default function SessionDetailPage() {
         </motion.div>
 
         <div className="hud-divider mb-4" />
-
-        {/* Screenshot Gallery */}
-        {images.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mb-4"
-          >
-            <ImageGallery images={images} onDelete={handleImageDelete} />
-          </motion.div>
-        )}
 
         {/* Note Editor */}
         <motion.div

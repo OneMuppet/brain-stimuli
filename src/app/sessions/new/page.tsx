@@ -3,12 +3,27 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { createSession } from "@/lib/db";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 
 export default function NewSessionPage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-white text-xl mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <WelcomeScreen />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +34,6 @@ export default function NewSessionPage() {
       const session = await createSession(title.trim());
       router.push(`/sessions/${session.id}`);
     } catch (error) {
-      console.error("Failed to create session:", error);
       alert("Failed to create session. Please try again.");
     } finally {
       setLoading(false);
@@ -67,6 +81,7 @@ export default function NewSessionPage() {
               type="button"
               onClick={() => router.back()}
               className="flex-1 btn-neon-outline hover-lock"
+              style={{ touchAction: "manipulation" }}
             >
               CANCEL
             </button>
@@ -74,6 +89,7 @@ export default function NewSessionPage() {
               type="submit"
               disabled={!title.trim() || loading}
               className="flex-1 btn-neon-outline hover-lock disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ touchAction: "manipulation" }}
             >
               {loading ? "INITIALIZING..." : "CREATE"}
             </button>

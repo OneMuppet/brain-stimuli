@@ -2,13 +2,14 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import { listSessions, type Session } from "@/lib/db";
 import { getLevel } from "@/lib/scoring";
 import { DecryptText } from "@/components/DecryptText";
 import { SignIn } from "@/components/SignIn";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { useSync } from "@/hooks/useSync";
-import { resetSyncState } from "@/lib/resetSync";
 
 const MOOD_LINES = [
   "Session Console Ready — Engage.",
@@ -20,103 +21,61 @@ const MOOD_LINES = [
 ];
 
 export default function Home() {
+  const { data: session, status } = useSession();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [mood] = useState(
     () => MOOD_LINES[Math.floor(Math.random() * MOOD_LINES.length)]
   );
-  const { isAuthenticated, isOnline, isSyncing, lastSyncTime, error: syncError } = useSync();
+  const { isAuthenticated, isOnline, isSyncing, lastSyncTime } = useSync();
+
+  // Show welcome screen if not authenticated
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-white text-xl mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <WelcomeScreen />;
+  }
 
   const loadSessions = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const data = await listSessions();
       setSessions(data);
     } catch (error) {
-      console.error("Failed to load sessions:", error);
+      // Silent error handling
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  // Fetch and log cloud data on mount to verify sync
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const fetchCloudData = async () => {
-      try {
-        console.log("📥 Fetching cloud data for verification...");
-            const response = await fetch("/api/sync?full=true", {
-              credentials: "include", // Ensure cookies are sent
-            });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error("❌ Failed to fetch cloud data:", errorData);
-          return;
-        }
-
-        const cloudData = await response.json();
-        const data = cloudData.data || cloudData.delta;
-        
-        if (!data) {
-          console.log("⚠️ No cloud data found (empty Drive file)");
-          return;
-        }
-
-        const sessions = [...(data.sessions?.created || []), ...(data.sessions?.updated || [])];
-        const notes = [...(data.notes?.created || []), ...(data.notes?.updated || [])];
-        const images = [...(data.images?.created || []), ...(data.images?.updated || [])];
-        
-        console.log("📦 CLOUD DATA VERIFICATION:");
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log(`Sessions in cloud: ${sessions.length || 0}`);
-        console.log(`Notes in cloud: ${notes.length || 0}`);
-        console.log(`Images in cloud: ${images.length || 0}`);
-        console.log(`Sync version: ${data.metadata?.syncVersion || 0}`);
-        console.log(`Last sync: ${data.metadata?.lastLocalChangeTimestamp || 0}`);
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log("Full cloud data:", data);
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
-        // Log session titles for quick verification
-        if (sessions.length > 0) {
-          console.log("Session titles in cloud:");
-          sessions.forEach((s: any) => {
-            console.log(`  - "${s.title}" (ID: ${s.id.substring(0, 20)}...)`);
-          });
-        }
-        
-      } catch (error) {
-        console.error("❌ Error fetching cloud data:", error);
-      }
-    };
-
-    // Fetch cloud data after a short delay (let initial sync complete)
-    const timeoutId = setTimeout(() => {
-      fetchCloudData();
-    }, 2000);
-
-    return () => clearTimeout(timeoutId);
   }, [isAuthenticated]);
 
   useEffect(() => {
-    loadSessions().catch(console.error);
-  }, [loadSessions]);
+    if (isAuthenticated) {
+      loadSessions().catch(() => {});
+    }
+  }, [loadSessions, isAuthenticated]);
 
   // Reload sessions after sync completes
   useEffect(() => {
-    if (lastSyncTime && !isSyncing) {
-      console.log("Sync completed, reloading sessions...");
-      loadSessions().catch(console.error);
+    if (isAuthenticated && lastSyncTime && !isSyncing) {
+      loadSessions().catch(() => {});
     }
-  }, [lastSyncTime, isSyncing, loadSessions]);
+  }, [lastSyncTime, isSyncing, loadSessions, isAuthenticated]);
 
-  // Log sync errors
-  useEffect(() => {
-    if (syncError) {
-      console.error("Sync error:", syncError);
-    }
-  }, [syncError]);
+  // Filter sessions by search query
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return sessions;
+    const query = searchQuery.toLowerCase();
+    return sessions.filter((s) =>
+      s.title.toLowerCase().includes(query)
+    );
+  }, [sessions, searchQuery]);
 
   if (loading) {
     return (
@@ -129,7 +88,7 @@ export default function Home() {
   return (
     <div className="relative min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header with Sign-in */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex-1" />
           <motion.h1
@@ -155,36 +114,66 @@ export default function Home() {
           <DecryptText text={mood} speed={30} delay={300} />
         </motion.div>
 
-            {/* Sync status indicator */}
-            {isAuthenticated && (
-              <div className="console-text text-xs mb-4 flex items-center justify-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    isSyncing ? "bg-cyan-400 animate-pulse" : 
-                    isOnline ? "bg-green-400" : "bg-yellow-400"
-                  }`} />
-                  {isSyncing ? "SYNCING..." : 
-                   isOnline ? "CLOUD SYNC ACTIVE" : 
-                   "OFFLINE - CHANGES QUEUED"}
-                </div>
+        {/* Sync status indicator */}
+        {isAuthenticated && (
+          <div className="console-text text-xs mb-4 flex items-center justify-center gap-4">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isSyncing
+                    ? "bg-cyan-400 animate-pulse"
+                    : isOnline
+                      ? "bg-green-400"
+                      : "bg-yellow-400"
+                }`}
+              />
+              {isSyncing
+                ? "SYNCING..."
+                : isOnline
+                  ? "CLOUD SYNC ACTIVE"
+                  : "OFFLINE - CHANGES QUEUED"}
+            </div>
+          </div>
+        )}
+
+        {/* Search Bar */}
+        {sessions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="mb-6"
+          >
+            <div className="relative hud-panel corner-hud p-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search sessions..."
+                className="w-full bg-transparent text-white placeholder-white/30 outline-none font-mono text-sm tracking-wide"
+                style={{ touchAction: "manipulation" }}
+              />
+              {searchQuery && (
                 <button
-                  onClick={async () => {
-                    if (confirm("Reset sync state? This will clear all sync timestamps and force a full sync on next sync.")) {
-                      await resetSyncState();
-                      window.location.reload();
-                    }
-                  }}
-                  className="text-[10px] text-cyan-400/60 hover:text-cyan-400 transition-colors underline"
-                  title="Reset sync state (forces full sync)"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 text-xl leading-none"
+                  style={{ touchAction: "manipulation" }}
+                  aria-label="Clear search"
                 >
-                  [RESET SYNC]
+                  ×
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* New Session Button */}
         <div className="flex items-center justify-end mb-8 hud-divider">
-          <Link href="/sessions/new" className="btn-neon-outline hover-lock">
+          <Link
+            href="/sessions/new"
+            className="btn-neon-outline hover-lock"
+            style={{ touchAction: "manipulation" }}
+          >
             + NEW SESSION
           </Link>
         </div>
@@ -200,13 +189,35 @@ export default function Home() {
             <p className="text-white text-lg mb-6 console-text">
               No sessions detected.
             </p>
-            <Link href="/sessions/new" className="btn-neon-outline hover-lock">
+            <Link
+              href="/sessions/new"
+              className="btn-neon-outline hover-lock"
+              style={{ touchAction: "manipulation" }}
+            >
               INITIALIZE FIRST SESSION
             </Link>
           </motion.div>
+        ) : filteredSessions.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+            className="text-center py-20 hud-panel max-w-md mx-auto"
+          >
+            <p className="text-white text-lg mb-6 console-text">
+              No sessions match "{searchQuery}".
+            </p>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="btn-neon-outline hover-lock"
+              style={{ touchAction: "manipulation" }}
+            >
+              CLEAR SEARCH
+            </button>
+          </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sessions.map((session, index) => (
+            {filteredSessions.map((session, index) => (
               <motion.div
                 key={session.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -218,11 +229,13 @@ export default function Home() {
                 }}
                 className="relative hud-panel corner-hud group hover-lock"
               >
-                <Link href={`/sessions/${session.id}`} className="block">
+                <Link
+                  href={`/sessions/${session.id}`}
+                  className="block"
+                  style={{ touchAction: "manipulation" }}
+                >
                   <div className="flex items-center justify-between console-text mb-2">
-                    <span className="data-flicker">
-                      LVL {getLevel(session.score)}
-                    </span>
+                    <span className="data-flicker">LVL {getLevel(session.score)}</span>
                     <span className="text-[10px]">
                       {new Date(session.createdAt).toLocaleDateString()}
                     </span>
@@ -241,7 +254,11 @@ export default function Home() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 xp-bar-container">
                       <motion.div
-                        className={`xp-bar-fill ${((session.score % 100) / 100) * 100 >= 100 ? 'xp-bar-complete' : ''}`}
+                        className={`xp-bar-fill ${
+                          ((session.score % 100) / 100) * 100 >= 100
+                            ? "xp-bar-complete"
+                            : ""
+                        }`}
                         initial={{ width: 0 }}
                         animate={{
                           width: `${((session.score % 100) / 100) * 100}%`,
