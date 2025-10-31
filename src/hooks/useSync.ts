@@ -179,7 +179,9 @@ export function useSync() {
             console.log(`📥 Restoring ${imagesNeedingRestoration.length} image blobs from Drive (full sync)...`);
             const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
               try {
-                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`);
+                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`, {
+                  credentials: "include", // Ensure cookies are sent
+                });
                 if (response.ok) {
                   console.log(`✅ Restored image: ${imageMeta.id}`);
                   return true;
@@ -230,7 +232,9 @@ export function useSync() {
             // Restore images in parallel (but with some limit to avoid overwhelming)
             const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
               try {
-                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`);
+                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`, {
+                  credentials: "include", // Ensure cookies are sent
+                });
                 if (response.ok) {
                   console.log(`✅ Restored image: ${imageMeta.id}`);
                   return true;
@@ -284,6 +288,7 @@ export function useSync() {
                 
                 const uploadResponse = await fetch("/api/images/upload", {
                   method: "POST",
+                  credentials: "include", // Ensure cookies are sent
                   body: formData,
                 });
                 
@@ -314,6 +319,7 @@ export function useSync() {
         
         const syncResponse = await fetch("/api/sync", {
           method: "POST",
+          credentials: "include", // Ensure cookies are sent
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ delta: localDelta }),
         });

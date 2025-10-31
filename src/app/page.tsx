@@ -45,7 +45,9 @@ export default function Home() {
     const fetchCloudData = async () => {
       try {
         console.log("📥 Fetching cloud data for verification...");
-        const response = await fetch("/api/sync?full=true");
+            const response = await fetch("/api/sync?full=true", {
+              credentials: "include", // Ensure cookies are sent
+            });
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
