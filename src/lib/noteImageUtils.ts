@@ -49,33 +49,52 @@ export async function convertImageIdsToBlobUrls(html: string, images: Image[]): 
     }
   }
   
-  // Replace img tags with data-image-id attribute - update src to blob URL
+  // Parse HTML and process all img tags
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
-  const imgElements = doc.querySelectorAll("img[data-image-id]");
+  const imgElements = doc.querySelectorAll("img");
   
   for (const img of Array.from(imgElements)) {
     const imageId = img.getAttribute("data-image-id");
+    const src = img.getAttribute("src");
+    
     if (imageId) {
+      // Image has data-image-id - look it up
       if (imageIdToUrlMap.has(imageId)) {
         // Update src to blob URL but keep data-image-id
         img.setAttribute("src", imageIdToUrlMap.get(imageId)!);
       } else {
         // Image ID found but not in provided images - try to load from IndexedDB
-        console.log(`Image ID ${imageId} found in note but not in provided images, loading from IndexedDB...`);
+        console.log(`🖼️ Image ID ${imageId} found in note but not in provided images, loading from IndexedDB...`);
         try {
           const image = await getImage(imageId);
           if (image) {
             const url = await getImageUrl(image);
             img.setAttribute("src", url);
             imageIdToUrlMap.set(imageId, url);
+            console.log(`✅ Loaded image ${imageId} from IndexedDB`);
           } else {
-            console.warn(`Image ID ${imageId} not found in IndexedDB - might need to restore from cloud`);
+            // Image not found - keep data-image-id but remove broken src
+            if (src?.startsWith("blob:")) {
+              img.removeAttribute("src");
+              console.warn(`⚠️ Image ID ${imageId} not found in IndexedDB - removed broken blob URL, will retry when image is restored`);
+            } else {
+              console.warn(`⚠️ Image ID ${imageId} not found in IndexedDB - might need to restore from cloud`);
+            }
           }
         } catch (error) {
-          console.error(`Failed to load image ${imageId}:`, error);
+          console.error(`❌ Failed to load image ${imageId}:`, error);
+          // Remove broken src but keep data-image-id so we can retry later
+          if (src?.startsWith("blob:")) {
+            img.removeAttribute("src");
+          }
         }
       }
+    } else if (src?.startsWith("blob:")) {
+      // Legacy content: has blob URL but no data-image-id
+      // We can't match this to an image ID, so we'll leave it as-is for now
+      // In the future, we might try to match by session/timestamp, but for now just warn
+      console.warn(`⚠️ Legacy image in note: has blob URL but no data-image-id - cannot sync properly`);
     }
   }
   

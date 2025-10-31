@@ -42,6 +42,7 @@ export default function SessionDetailPage() {
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
   const noteEditorRef = useRef<NoteEditorHandle>(null);
+  const prevImageCountRef = useRef(0);
 
   // Gamification state
   const [streakActive, setStreakActive] = useState(false);
@@ -179,6 +180,31 @@ export default function SessionDetailPage() {
     loadSessionData().catch(console.error);
   }, [loadSessionData]);
 
+  // Refresh note content when images are restored (e.g., after sync)
+  // Track previous image count to detect when new images are restored
+  useEffect(() => {
+    const currentImageCount = images.length;
+    const prevImageCount = prevImageCountRef.current;
+    prevImageCountRef.current = currentImageCount;
+    
+    // Only refresh if images were added (restored from cloud)
+    if (notes.length > 0 && currentImageCount > prevImageCount && prevImageCount > 0 && noteEditorRef.current?.editor) {
+      console.log(`🔄 Images restored (${prevImageCount} -> ${currentImageCount}), refreshing note content...`);
+      // Re-convert image IDs to blob URLs in case new images were restored
+      (async () => {
+        const note = notes[0];
+        if (note) {
+          const processedContent = await convertImageIdsToBlobUrls(note.content, images);
+          // Only update if content changed (e.g., missing images were restored)
+          if (processedContent !== note.content) {
+            console.log(`✅ Refreshed note content with restored images`);
+            noteEditorRef.current?.editor?.commands.setContent(processedContent);
+          }
+        }
+      })().catch(console.error);
+    }
+  }, [notes, images]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -229,7 +255,7 @@ export default function SessionDetailPage() {
             )}
           </AnimatePresence>
           {/* Fade gradient at bottom to create fade effect when scrolling - positioned well below content */}
-          <div 
+          <div
             className="absolute left-0 right-0 h-6 pointer-events-none"
             style={{
               top: "100%",
