@@ -23,12 +23,22 @@ export async function POST(req: NextRequest) {
     // Check authentication first
     const { getToken } = await import("next-auth/jwt");
     
+    // In production, NextAuth uses __Secure-next-auth.session-token
+    const cookieName = process.env.NODE_ENV === "production" 
+      ? "__Secure-next-auth.session-token" 
+      : "next-auth.session-token";
+    
     console.log("🔐 POST /api/sync - Request check:", {
       hasCookieHeader: !!req.headers.get("cookie"),
       cookieHeaderLength: req.headers.get("cookie")?.length || 0,
+      cookieName,
     });
     
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET!,
+      cookieName, // Explicitly tell getToken which cookie to read
+    });
     
     console.log("🔐 POST /api/sync - Auth check:", {
       hasToken: !!token,
@@ -220,16 +230,33 @@ export async function GET(req: NextRequest) {
     });
     
     // Get token for Drive access (still need JWT for accessToken)
+    // In production, NextAuth uses __Secure-next-auth.session-token, so we need to tell getToken
     const { getToken } = await import("next-auth/jwt");
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
+    const cookieName = process.env.NODE_ENV === "production" 
+      ? "__Secure-next-auth.session-token" 
+      : "next-auth.session-token";
+    
+    console.log("🔐 GET /api/sync - Cookie config:", {
+      cookieName,
+      hasCookieHeader: !!req.headers.get("cookie"),
+    });
+    
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET!,
+      cookieName, // Explicitly tell getToken which cookie to read
+    });
     
     console.log("🔐 GET /api/sync - Token check (for Drive access):", {
       hasToken: !!token,
       hasAccessToken: !!token?.accessToken,
+      tokenKeys: token ? Object.keys(token).join(", ") : "none",
     });
     
     if (!session || !token?.accessToken) {
       console.error("❌ GET /api/sync - Not authenticated!");
+      console.error("🔐 Session:", session ? "exists" : "missing");
+      console.error("🔐 Token:", token ? "exists but no accessToken" : "missing");
       return NextResponse.json(
         { error: "Not authenticated. Please sign in." },
         { status: 401 }
