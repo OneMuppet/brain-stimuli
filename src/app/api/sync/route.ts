@@ -20,8 +20,21 @@ export async function POST(req: NextRequest) {
   try {
     const body: SyncRequest = await req.json();
     
+    console.log("📤 POST /api/sync - Receiving local delta:", {
+      hasDelta: !!body.delta,
+      sessions: body.delta?.sessions?.created?.length || 0 + body.delta?.sessions?.updated?.length || 0,
+      notes: body.delta?.notes?.created?.length || 0 + body.delta?.notes?.updated?.length || 0,
+      images: body.delta?.images?.created?.length || 0,
+    });
+    
     // Get current cloud state
     let cloudData = await syncFromDrive(req);
+    console.log("📥 POST /api/sync - Current cloud state:", {
+      exists: !!cloudData,
+      sessions: cloudData?.sessions?.created?.length || 0 + cloudData?.sessions?.updated?.length || 0,
+      notes: cloudData?.notes?.created?.length || 0 + cloudData?.notes?.updated?.length || 0,
+      images: cloudData?.images?.created?.length || 0,
+    });
     
     // Initialize empty state if no cloud data exists
     if (!cloudData || typeof cloudData !== 'object') {
@@ -124,16 +137,23 @@ export async function POST(req: NextRequest) {
       cloudData = merged;
     }
     
-    // Upload merged state to Drive
-    await syncToDrive(req, cloudData);
-    
-    const syncTimestamp = Date.now();
-    
-    return NextResponse.json({
-      success: true,
-      syncTimestamp,
-      conflicts: [], // Conflicts resolved server-side using last-write-wins
-    } satisfies SyncResponse);
+        // Upload merged state to Drive
+        console.log("💾 POST /api/sync - Uploading merged state to Drive:", {
+          sessions: cloudData?.sessions?.created?.length || 0 + cloudData?.sessions?.updated?.length || 0,
+          notes: cloudData?.notes?.created?.length || 0 + cloudData?.notes?.updated?.length || 0,
+          images: cloudData?.images?.created?.length || 0,
+        });
+        await syncToDrive(req, cloudData);
+        
+        const syncTimestamp = Date.now();
+        
+        console.log("✅ POST /api/sync - Upload complete");
+        
+        return NextResponse.json({
+          success: true,
+          syncTimestamp,
+          conflicts: [], // Conflicts resolved server-side using last-write-wins
+        } satisfies SyncResponse);
   } catch (error) {
     console.error("Sync POST error:", error);
     const errorMessage = error instanceof Error ? error.message : "Sync failed";
@@ -150,14 +170,27 @@ export async function GET(req: NextRequest) {
     const sinceTimestamp = since ? parseInt(since, 10) : 0;
     const fullSync = req.nextUrl.searchParams.get("full") === "true";
     
+    console.log("📥 GET /api/sync - Request:", {
+      since: sinceTimestamp,
+      fullSync,
+      sinceParam: since || "none",
+    });
+    
     let cloudData;
     try {
       cloudData = await syncFromDrive(req);
     } catch (error) {
-      console.error("Error fetching from Drive:", error);
+      console.error("❌ Error fetching from Drive:", error);
       // If no data exists or auth failed, return empty state
       cloudData = null;
     }
+    
+    console.log("📦 GET /api/sync - Retrieved data:", {
+      exists: !!cloudData,
+      type: typeof cloudData,
+      sessions: cloudData?.sessions?.created?.length || 0,
+      notes: cloudData?.notes?.created?.length || 0,
+    });
     
     // Ensure proper structure
     const cloudState: SyncDelta = {

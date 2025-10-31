@@ -59,19 +59,36 @@ export async function syncToDrive(req: Request, data: any) {
 
   const fileId = list.data.files?.[0]?.id;
   const content = JSON.stringify(data);
+  
+  // Log what we're saving
+  const sessionsCount = data?.sessions?.created?.length || 0 + data?.sessions?.updated?.length || 0;
+  const notesCount = data?.notes?.created?.length || 0 + data?.notes?.updated?.length || 0;
+  const imagesCount = data?.images?.created?.length || 0;
+  console.log("💾 Saving to Google Drive:", {
+    fileId: fileId || "NEW FILE",
+    sessionsCount,
+    notesCount,
+    imagesCount,
+    contentSize: content.length,
+    preview: content.substring(0, 200) + "...",
+  });
 
   if (fileId) {
     // Update
-    await drive.files.update({
+    const result = await drive.files.update({
       fileId,
       media: { mimeType: "application/json", body: content },
     });
+    console.log("✅ Updated Google Drive file:", fileId);
+    return result;
   } else {
     // Create
-    await drive.files.create({
+    const result = await drive.files.create({
       requestBody: { name: FILE_NAME, parents: ["appDataFolder"] },
       media: { mimeType: "application/json", body: content },
     });
+    console.log("✅ Created Google Drive file:", result.data.id);
+    return result;
   }
 }
 
@@ -86,7 +103,15 @@ export async function syncFromDrive(req: Request) {
     });
 
     const fileId = list.data.files?.[0]?.id;
-    if (!fileId) return null;
+    console.log("📥 Checking Google Drive:", {
+      fileId: fileId || "NO FILE FOUND",
+      filesListed: list.data.files?.length || 0,
+    });
+    
+    if (!fileId) {
+      console.log("⚠️ No file found in Google Drive appDataFolder");
+      return null;
+    }
 
     const response = await drive.files.get(
       { fileId, alt: "media" },
@@ -100,18 +125,34 @@ export async function syncFromDrive(req: Request) {
       const text = buffer.toString('utf-8');
       
       if (!text || text.trim().length === 0) {
-        console.log("Drive file is empty");
+        console.log("⚠️ Drive file is empty");
         return null;
       }
       
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      
+      // Log what we retrieved
+      const sessionsCount = parsed?.sessions?.created?.length || 0 + parsed?.sessions?.updated?.length || 0;
+      const notesCount = parsed?.notes?.created?.length || 0 + parsed?.notes?.updated?.length || 0;
+      const imagesCount = parsed?.images?.created?.length || 0;
+      console.log("📦 Retrieved from Google Drive:", {
+        fileId,
+        contentSize: text.length,
+        sessionsCount,
+        notesCount,
+        imagesCount,
+        preview: text.substring(0, 200) + "...",
+      });
+      
+      return parsed;
     } catch (parseError) {
-      console.error("Error parsing Drive data:", parseError);
+      console.error("❌ Error parsing Drive data:", parseError);
       // Try to see what we got
       if (response.data) {
         try {
           const buffer = Buffer.from(response.data as ArrayBuffer);
-          console.error("Raw data preview:", buffer.toString('utf-8').substring(0, 100));
+          const preview = buffer.toString('utf-8').substring(0, 200);
+          console.error("Raw data preview:", preview);
         } catch {
           // Ignore
         }
@@ -119,7 +160,7 @@ export async function syncFromDrive(req: Request) {
       return null;
     }
   } catch (error) {
-    console.error("Error syncing from Drive:", error);
+    console.error("❌ Error syncing from Drive:", error);
     // Return null instead of throwing so the API can handle empty state
     return null;
   }
