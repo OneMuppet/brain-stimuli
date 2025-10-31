@@ -38,6 +38,65 @@ export default function Home() {
     }
   }, []);
 
+  // Fetch and log cloud data on mount to verify sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchCloudData = async () => {
+      try {
+        console.log("📥 Fetching cloud data for verification...");
+        const response = await fetch("/api/sync?full=true");
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("❌ Failed to fetch cloud data:", errorData);
+          return;
+        }
+
+        const cloudData = await response.json();
+        const data = cloudData.data || cloudData.delta;
+        
+        if (!data) {
+          console.log("⚠️ No cloud data found (empty Drive file)");
+          return;
+        }
+
+        const sessions = [...(data.sessions?.created || []), ...(data.sessions?.updated || [])];
+        const notes = [...(data.notes?.created || []), ...(data.notes?.updated || [])];
+        const images = [...(data.images?.created || []), ...(data.images?.updated || [])];
+        
+        console.log("📦 CLOUD DATA VERIFICATION:");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log(`Sessions in cloud: ${sessions.length || 0}`);
+        console.log(`Notes in cloud: ${notes.length || 0}`);
+        console.log(`Images in cloud: ${images.length || 0}`);
+        console.log(`Sync version: ${data.metadata?.syncVersion || 0}`);
+        console.log(`Last sync: ${data.metadata?.lastLocalChangeTimestamp || 0}`);
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("Full cloud data:", data);
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        // Log session titles for quick verification
+        if (sessions.length > 0) {
+          console.log("Session titles in cloud:");
+          sessions.forEach((s: any) => {
+            console.log(`  - "${s.title}" (ID: ${s.id.substring(0, 20)}...)`);
+          });
+        }
+        
+      } catch (error) {
+        console.error("❌ Error fetching cloud data:", error);
+      }
+    };
+
+    // Fetch cloud data after a short delay (let initial sync complete)
+    const timeoutId = setTimeout(() => {
+      fetchCloudData();
+    }, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [isAuthenticated]);
+
   useEffect(() => {
     loadSessions().catch(console.error);
   }, [loadSessions]);
