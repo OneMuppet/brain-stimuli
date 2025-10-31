@@ -9,10 +9,19 @@ export async function getDriveClient(req: Request) {
     console.log("🔐 getDriveClient: Checking authentication...");
     console.log("🔐 getDriveClient: Cookie header:", req.headers.get("cookie")?.substring(0, 200) || "none");
     
-    // Get token - NextAuth v5 automatically handles __Secure- prefix in production
+    // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
+    // In production, it's __Secure-authjs.session-token
+    const cookieName = process.env.NODE_ENV === "production" 
+      ? "__Secure-authjs.session-token" 
+      : "authjs.session-token";
+    
+    console.log("🔐 getDriveClient: Cookie name:", cookieName);
+    
+    // Get token - explicitly tell getToken which cookie to read
     const token = await getToken({ 
       req, 
       secret: process.env.NEXTAUTH_SECRET!,
+      cookieName, // Explicitly tell getToken which cookie to read
     });
     
     console.log("🔐 getDriveClient: Token check:", {
