@@ -40,7 +40,7 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
   
   const syncMetadata = await getSyncMetadata();
   
-  // If sinceTimestamp is 0, this is the first sync - include ALL unsynced items
+  // Check if this is a full sync (sinceTimestamp === 0)
   // An item is "synced" if it has syncTimestamp set and syncTimestamp > 0
   const isFirstSync = sinceTimestamp === 0;
   
@@ -50,18 +50,27 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
     totalSessions: sessions.length,
     totalNotes: allNotes.length,
     totalImages: allImages.length,
+    sessionsWithSyncTimestamp: sessions.filter(s => s.syncTimestamp && s.syncTimestamp > 0).length,
+    notesWithSyncTimestamp: allNotes.filter(n => n.syncTimestamp && n.syncTimestamp > 0).length,
   });
   
-  // Filter by lastModified > sinceTimestamp (or created > sinceTimestamp for new items)
-  // OR if first sync, include items that haven't been synced (no syncTimestamp or syncTimestamp === 0)
+  // Filter logic:
+  // - If first sync (sinceTimestamp === 0): include ALL items that haven't been synced
+  // - If incremental sync: include items modified after lastSync OR items that haven't been synced yet
   const delta: SyncDelta = {
     sessions: {
       created: sessions.filter(s => {
+        const hasBeenSynced = s.syncTimestamp && s.syncTimestamp > 0;
         if (isFirstSync) {
           // First sync: include all sessions that haven't been synced
-          return !s.syncTimestamp || s.syncTimestamp === 0;
+          return !hasBeenSynced;
         }
-        // Incremental sync: new session created after sync timestamp
+        // Incremental sync: include new/unsynced sessions OR sessions modified after lastSync
+        if (!hasBeenSynced) {
+          // Not synced yet - include it
+          return true;
+        }
+        // Check if modified after last sync
         return s.createdAt > sinceTimestamp && s.createdAt === s.lastModified;
       }),
       updated: sessions.filter(s => {
@@ -69,16 +78,22 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
           // First sync: don't include in "updated" (they're in "created")
           return false;
         }
-        // Session modified after sync timestamp (and not just created)
-        return s.lastModified > sinceTimestamp && s.createdAt !== s.lastModified;
+        // Session modified after sync timestamp (and not just created, and already synced)
+        const hasBeenSynced = s.syncTimestamp && s.syncTimestamp > 0;
+        return hasBeenSynced && s.lastModified > sinceTimestamp && s.createdAt !== s.lastModified;
       }),
       deleted: [], // Deleted items tracked separately in pending changes
     },
     notes: {
       created: allNotes.filter(n => {
+        const hasBeenSynced = n.syncTimestamp && n.syncTimestamp > 0;
         if (isFirstSync) {
           // First sync: include all notes that haven't been synced
-          return !n.syncTimestamp || n.syncTimestamp === 0;
+          return !hasBeenSynced;
+        }
+        // Incremental sync: include new/unsynced notes OR notes modified after lastSync
+        if (!hasBeenSynced) {
+          return true;
         }
         return n.createdAt > sinceTimestamp && n.createdAt === n.lastModified;
       }),
@@ -87,7 +102,8 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
           // First sync: don't include in "updated"
           return false;
         }
-        return n.lastModified > sinceTimestamp && n.createdAt !== n.lastModified;
+        const hasBeenSynced = n.syncTimestamp && n.syncTimestamp > 0;
+        return hasBeenSynced && n.lastModified > sinceTimestamp && n.createdAt !== n.lastModified;
       }),
       deleted: [],
     },
