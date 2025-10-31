@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone', // Required for AWS Amplify deployment
+  // Remove standalone mode - Amplify handles Next.js SSR natively
   typescript: {
     ignoreBuildErrors: false, // Keep TypeScript checking enabled
   },
