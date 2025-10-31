@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import * as db from "@/lib/db";
+import { getImage } from "@/lib/db";
 import { getSyncMetadata, updateSyncMetadata } from "@/lib/syncMetadata";
 import { getPendingChanges, removePendingChange } from "@/lib/pendingChanges";
 import { generateLocalDelta, applyCloudDelta, type SyncDelta } from "@/lib/deltaSync";
@@ -147,6 +148,44 @@ export function useSync() {
           if (conflicts.length > 0) {
             console.warn("Conflicts resolved:", conflicts);
           }
+          
+          // Restore missing image blobs after applying metadata (full sync)
+          const imagesNeedingRestoration: any[] = [];
+          for (const imageMeta of [
+            ...(fullDelta.images?.created || []),
+            ...(fullDelta.images?.updated || []),
+          ]) {
+            if (imageMeta.driveFileId) {
+              const existing = await db.getImage(imageMeta.id);
+              if (!existing) {
+                imagesNeedingRestoration.push(imageMeta);
+              }
+            }
+          }
+          
+          if (imagesNeedingRestoration.length > 0) {
+            console.log(`📥 Restoring ${imagesNeedingRestoration.length} image blobs from Drive (full sync)...`);
+            const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
+              try {
+                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`);
+                if (response.ok) {
+                  console.log(`✅ Restored image: ${imageMeta.id}`);
+                  return true;
+                } else {
+                  const errorText = await response.text();
+                  console.error(`❌ Failed to restore image ${imageMeta.id}:`, errorText);
+                  return false;
+                }
+              } catch (error) {
+                console.error(`❌ Error restoring image ${imageMeta.id}:`, error);
+                return false;
+              }
+            });
+            
+            const results = await Promise.all(restorePromises);
+            const successCount = results.filter(r => r).length;
+            console.log(`✅ Restored ${successCount}/${imagesNeedingRestoration.length} images`);
+          }
         } else if (cloudDelta) {
           // Delta sync - apply only changes
           const { conflicts } = await applyCloudDelta(cloudDelta, "last-write-wins");
@@ -157,6 +196,46 @@ export function useSync() {
           });
           if (conflicts.length > 0) {
             console.warn("Conflicts resolved:", conflicts);
+          }
+          
+          // Restore missing image blobs after applying metadata
+          // Check which images actually need restoration (not in local DB)
+          const imagesNeedingRestoration: any[] = [];
+          for (const imageMeta of [
+            ...(cloudDelta.images?.created || []),
+            ...(cloudDelta.images?.updated || []),
+          ]) {
+            if (imageMeta.driveFileId) {
+              const existing = await db.getImage(imageMeta.id);
+              if (!existing) {
+                imagesNeedingRestoration.push(imageMeta);
+              }
+            }
+          }
+          
+          if (imagesNeedingRestoration.length > 0) {
+            console.log(`📥 Restoring ${imagesNeedingRestoration.length} image blobs from Drive...`);
+            // Restore images in parallel (but with some limit to avoid overwhelming)
+            const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
+              try {
+                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`);
+                if (response.ok) {
+                  console.log(`✅ Restored image: ${imageMeta.id}`);
+                  return true;
+                } else {
+                  const errorText = await response.text();
+                  console.error(`❌ Failed to restore image ${imageMeta.id}:`, errorText);
+                  return false;
+                }
+              } catch (error) {
+                console.error(`❌ Error restoring image ${imageMeta.id}:`, error);
+                return false;
+              }
+            });
+            
+            const results = await Promise.all(restorePromises);
+            const successCount = results.filter(r => r).length;
+            console.log(`✅ Restored ${successCount}/${imagesNeedingRestoration.length} images`);
           }
         }
       }
@@ -171,6 +250,56 @@ export function useSync() {
         localDelta.images.updated.length > 0;
       
       if (hasLocalChanges) {
+        // Before syncing, upload any images that don't have driveFileId yet
+        const imagesToUpload = [
+          ...localDelta.images.created,
+          ...localDelta.images.updated,
+        ].filter((img: any) => !img.driveFileId);
+        
+        if (imagesToUpload.length > 0) {
+          console.log(`📤 Uploading ${imagesToUpload.length} image blobs to Drive before sync...`);
+          for (const imageMeta of imagesToUpload) {
+            try {
+              // Get the full image from local DB to get the blob
+              const image = await db.getImage(imageMeta.id);
+              if (image && !image.driveFileId) {
+                // Upload blob via API
+                const formData = new FormData();
+                formData.append("imageId", image.id);
+                formData.append("blob", image.data, `${image.id}.${image.contentType.split('/')[1] || 'png'}`);
+                formData.append("contentType", image.contentType);
+                formData.append("sessionId", image.sessionId);
+                
+                const uploadResponse = await fetch("/api/images/upload", {
+                  method: "POST",
+                  body: formData,
+                });
+                
+                if (uploadResponse.ok) {
+                  const result = await uploadResponse.json();
+                  console.log(`✅ Uploaded image to Drive: ${image.id} -> ${result.driveFileId}`);
+                  // Update local image with driveFileId (this also updates syncTimestamp)
+                  await db.updateImage(image.id, { 
+                    driveFileId: result.driveFileId,
+                    syncTimestamp: Date.now(),
+                  });
+                  // Update delta with driveFileId so it's included in the sync
+                  const imgInDelta = localDelta.images.created.find((img: any) => img.id === image.id) ||
+                                   localDelta.images.updated.find((img: any) => img.id === image.id);
+                  if (imgInDelta) {
+                    imgInDelta.driveFileId = result.driveFileId;
+                  }
+                } else {
+                  const errorText = await uploadResponse.text();
+                  console.error(`❌ Failed to upload image ${image.id}:`, errorText);
+                }
+              }
+            } catch (error) {
+              console.error(`❌ Error uploading image ${imageMeta.id}:`, error);
+            }
+          }
+        }
+        
         const syncResponse = await fetch("/api/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

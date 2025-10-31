@@ -279,22 +279,33 @@ export async function applyCloudDelta(
     }
   }
   
-  // Handle image metadata (images themselves are synced separately)
+  // Handle image restoration from cloud
+  // Note: Actual image blob restoration happens via API route (client-side can't access Drive directly)
+  // Here we just track which images need restoration
+  let imagesNeedingRestoration = 0;
+  let imagesUpdated = 0;
   for (const imageMeta of [...cloudDelta.images.created, ...cloudDelta.images.updated]) {
     const existing = await db.getImage(imageMeta.id);
     
     if (!existing) {
-      // Image metadata exists in cloud but not local
-      // This means we need to fetch the image blob from Drive
-      // For now, just store the metadata
-      // TODO: Implement image fetch on-demand
+      // Image metadata exists in cloud but not local - needs blob restoration via API
+      if (imageMeta.driveFileId) {
+        console.log(`📥 Image ${imageMeta.id} needs restoration from Drive (driveFileId: ${imageMeta.driveFileId})`);
+        imagesNeedingRestoration++;
+      } else {
+        console.warn(`⚠️ Image ${imageMeta.id} has no driveFileId, cannot restore`);
+      }
     } else {
       // Update local metadata with cloud info (driveFileId, etc.)
       await db.updateImage(imageMeta.id, {
-        driveFileId: imageMeta.driveFileId,
+        driveFileId: imageMeta.driveFileId || existing.driveFileId,
         syncTimestamp: Date.now(),
       });
+      imagesUpdated++;
     }
+  }
+  if (imagesNeedingRestoration > 0 || imagesUpdated > 0) {
+    console.log(`  Images: ${imagesNeedingRestoration} need restoration, ${imagesUpdated} updated`);
   }
   
   return { conflicts };
