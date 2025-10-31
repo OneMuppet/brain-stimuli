@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageGallery } from "@/components/ImageGallery";
 import { NoteEditor } from "@/components/NoteEditor";
 import {
@@ -18,7 +18,10 @@ import {
   updateNote,
   updateSession,
   deleteImage,
+  getImageUrl,
 } from "@/lib/db";
+import { convertImageIdsToBlobUrls } from "@/lib/noteImageUtils";
+import type { NoteEditorHandle } from "@/components/NoteEditor";
 import { getLevel, getProgressToNextLevel } from "@/lib/scoring";
 import { XPBar } from "@/components/XPBar";
 import { PowerCard } from "@/components/PowerCard";
@@ -38,6 +41,7 @@ export default function SessionDetailPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
+  const noteEditorRef = useRef<NoteEditorHandle>(null);
 
   // Gamification state
   const [streakActive, setStreakActive] = useState(false);
@@ -70,9 +74,13 @@ export default function SessionDetailPage() {
     if (!session) return;
     try {
       const blob = new Blob([file], { type: file.type });
-      await createImage(sessionId, blob, file.type);
+      const image = await createImage(sessionId, blob, file.type);
       const updatedImages = await listImages(sessionId);
       setImages(updatedImages);
+
+      // Insert image into editor with image ID reference stored in data-image-id
+      const imageUrl = await getImageUrl(image);
+      noteEditorRef.current?.insertImage(image.id, imageUrl);
 
       setShowPowerCard({});
       onAction(XP_PER_IMAGE);
@@ -149,8 +157,16 @@ export default function SessionDetailPage() {
         return;
       }
 
+      // Convert image IDs in note content to blob URLs for display
+      const processedNotes = await Promise.all(
+        notesData.map(async (note) => {
+          const contentWithBlobUrls = await convertImageIdsToBlobUrls(note.content, imagesData);
+          return { ...note, content: contentWithBlobUrls };
+        })
+      );
+
       setSession(sessionData);
-      setNotes(notesData);
+      setNotes(processedNotes);
       setImages(imagesData);
     } catch (error) {
       console.error("Failed to load session:", error);
@@ -270,6 +286,7 @@ export default function SessionDetailPage() {
           transition={{ delay: 0.1, duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <NoteEditor
+            ref={noteEditorRef}
             initialContent={notes.length > 0 ? notes[0].content : ""}
             docKey={sessionId}
             onSave={handleNoteSave}

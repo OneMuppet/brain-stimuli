@@ -7,8 +7,10 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { Underline } from '@tiptap/extension-underline';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { CustomImage } from '@/lib/customImageExtension';
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
+import type { Editor } from '@tiptap/react';
 
 interface NoteEditorProps {
     initialContent: string;
@@ -17,7 +19,13 @@ interface NoteEditorProps {
     onImagePaste: (file: File) => void;
 }
 
-export function NoteEditor({ initialContent, docKey, onSave, onImagePaste }: NoteEditorProps) {
+export interface NoteEditorHandle {
+    editor: Editor | null;
+    insertImage: (imageId: string, imageUrl: string) => void;
+}
+
+export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
+  ({ initialContent, docKey, onSave, onImagePaste }, ref) => {
     const [saving, setSaving] = useState(false);
     const [showSaved, setShowSaved] = useState(false);
     const lastSavedHtmlRef = useRef<string>("");
@@ -28,6 +36,13 @@ export function NoteEditor({ initialContent, docKey, onSave, onImagePaste }: Not
         immediatelyRender: false, // Required for Next.js SSR
         extensions: [
             StarterKit,
+            CustomImage.configure({
+                inline: true,
+                allowBase64: true,
+                HTMLAttributes: {
+                    class: 'max-w-full h-auto rounded',
+                },
+            }),
             Table.configure({
                 resizable: false,
             }),
@@ -96,6 +111,20 @@ export function NoteEditor({ initialContent, docKey, onSave, onImagePaste }: Not
             editor.commands.focus();
         }
     }, [editor]);
+
+    // Expose editor and insertImage method via ref
+    useImperativeHandle(ref, () => ({
+        editor,
+        insertImage: (imageId: string, imageUrl: string) => {
+            if (editor) {
+                // Insert image with both src and data-image-id
+                editor.chain().focus().setImage({ 
+                    src: imageUrl,
+                    'data-image-id': imageId,
+                } as any).run();
+            }
+        },
+    }), [editor]);
 
     return (
         <div className="relative">
@@ -265,4 +294,7 @@ export function NoteEditor({ initialContent, docKey, onSave, onImagePaste }: Not
             `}</style>
         </div>
     );
-}
+  }
+);
+
+NoteEditor.displayName = "NoteEditor";
