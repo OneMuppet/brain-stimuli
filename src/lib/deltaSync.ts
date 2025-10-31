@@ -189,14 +189,23 @@ export async function applyCloudDelta(
 ): Promise<{ conflicts: string[] }> {
   const conflicts: string[] = [];
   
+  console.log("🔄 applyCloudDelta:", {
+    sessionsToApply: cloudDelta.sessions.created.length + cloudDelta.sessions.updated.length,
+    notesToApply: cloudDelta.notes.created.length + cloudDelta.notes.updated.length,
+    imagesToApply: cloudDelta.images.created.length + cloudDelta.images.updated.length,
+  });
+  
   // Merge sessions
+  let sessionsRestored = 0;
+  let sessionsUpdated = 0;
   for (const session of [...cloudDelta.sessions.created, ...cloudDelta.sessions.updated]) {
     const existing = await db.getSession(session.id);
     
     if (!existing) {
-      // New session - add it
+      // New session - restore it from cloud
       const database = await getDB();
       await database.add("sessions", session);
+      sessionsRestored++;
     } else {
       // Conflict resolution: last-write-wins
       const localLastModified = existing.lastModified || existing.createdAt;
@@ -218,18 +227,23 @@ export async function applyCloudDelta(
           syncVersion: session.syncVersion,
           syncTimestamp: Date.now(),
         });
+        sessionsUpdated++;
       }
     }
   }
+  console.log(`  Sessions: ${sessionsRestored} restored, ${sessionsUpdated} updated`);
   
   // Merge notes
+  let notesRestored = 0;
+  let notesUpdated = 0;
   for (const note of [...cloudDelta.notes.created, ...cloudDelta.notes.updated]) {
     const existing = await db.getNote(note.id);
     
     if (!existing) {
-      // Create note
+      // Create note - restore from cloud
       const database = await getDB();
       await database.add("notes", note);
+      notesRestored++;
     } else {
       const localLastModified = existing.lastModified || existing.createdAt;
       const cloudLastModified = note.lastModified || note.createdAt;
@@ -242,9 +256,11 @@ export async function applyCloudDelta(
       } else {
         // Apply cloud version (skip sync tracking since this is from cloud)
         await db.updateNote(note.id, note.content, true); // skipSync = true
+        notesUpdated++;
       }
     }
   }
+  console.log(`  Notes: ${notesRestored} restored, ${notesUpdated} updated`);
   
   // Handle deletions
   for (const sessionId of cloudDelta.sessions.deleted) {
