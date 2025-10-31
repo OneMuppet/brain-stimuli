@@ -5,45 +5,50 @@ import { updateSyncMetadata } from "./syncMetadata";
 
 export async function resetSyncState() {
   const db = await getDB();
-  const tx = db.transaction(["sessions", "notes", "images", "syncMetadata"], "readwrite");
   
   console.log("🔄 Resetting sync state...");
   
   // Clear syncTimestamp from all sessions
-  const sessions = await tx.store.sessions.getAll();
+  const sessions = await db.getAll("sessions");
+  let sessionsCleared = 0;
   for (const session of sessions) {
     if (session.syncTimestamp) {
-      await tx.store.sessions.put({
+      await db.put("sessions", {
         ...session,
         syncTimestamp: undefined,
       });
+      sessionsCleared++;
     }
   }
-  console.log(`✅ Cleared syncTimestamp from ${sessions.length} sessions`);
+  console.log(`✅ Cleared syncTimestamp from ${sessionsCleared}/${sessions.length} sessions`);
   
   // Clear syncTimestamp from all notes
-  const notes = await tx.store.notes.getAll();
+  const notes = await db.getAll("notes");
+  let notesCleared = 0;
   for (const note of notes) {
     if (note.syncTimestamp) {
-      await tx.store.notes.put({
+      await db.put("notes", {
         ...note,
         syncTimestamp: undefined,
       });
+      notesCleared++;
     }
   }
-  console.log(`✅ Cleared syncTimestamp from ${notes.length} notes`);
+  console.log(`✅ Cleared syncTimestamp from ${notesCleared}/${notes.length} notes`);
   
   // Clear syncTimestamp from all images
-  const images = await tx.store.images.getAll();
+  const images = await db.getAll("images");
+  let imagesCleared = 0;
   for (const image of images) {
     if (image.syncTimestamp) {
-      await tx.store.images.put({
+      await db.put("images", {
         ...image,
         syncTimestamp: undefined,
       });
+      imagesCleared++;
     }
   }
-  console.log(`✅ Cleared syncTimestamp from ${images.length} images`);
+  console.log(`✅ Cleared syncTimestamp from ${imagesCleared}/${images.length} images`);
   
   // Reset sync metadata to force full sync
   await updateSyncMetadata({
@@ -54,7 +59,6 @@ export async function resetSyncState() {
   });
   console.log("✅ Reset sync metadata (lastSyncTimestamp = 0)");
   
-  await tx.done;
   console.log("✅ Sync state reset complete! Next sync will be a full sync.");
 }
 
