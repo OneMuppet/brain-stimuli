@@ -6,9 +6,23 @@ const FILE_NAME = "brain-stimuli-data.json";
 
 export async function getDriveClient(req: Request) {
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
+    console.log("🔐 getDriveClient: Checking authentication...");
+    console.log("🔐 getDriveClient: Cookie header:", req.headers.get("cookie")?.substring(0, 200) || "none");
+    
+    // Get token - NextAuth v5 automatically handles __Secure- prefix in production
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET!,
+    });
+    
+    console.log("🔐 getDriveClient: Token check:", {
+      hasToken: !!token,
+      hasAccessToken: !!token?.accessToken,
+      tokenKeys: token ? Object.keys(token).join(", ") : "none",
+    });
     
     if (!token?.accessToken) {
+      console.error("❌ getDriveClient: No access token!");
       throw new Error("No access token - user not authenticated. Please sign out and sign in again to refresh your authentication.");
     }
 

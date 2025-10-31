@@ -22,6 +22,12 @@ export async function POST(req: NextRequest) {
   try {
     // Check authentication first
     const { getToken } = await import("next-auth/jwt");
+    
+    console.log("🔐 POST /api/sync - Request check:", {
+      hasCookieHeader: !!req.headers.get("cookie"),
+      cookieHeaderLength: req.headers.get("cookie")?.length || 0,
+    });
+    
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
     
     console.log("🔐 POST /api/sync - Auth check:", {
@@ -29,12 +35,14 @@ export async function POST(req: NextRequest) {
       hasAccessToken: !!token?.accessToken,
       tokenExpiresAt: token?.expiresAt,
       userEmail: token?.email || "none",
+      tokenKeys: token ? Object.keys(token).join(", ") : "none",
     });
     
     if (!token?.accessToken) {
       console.error("❌ POST /api/sync - Not authenticated!");
+      console.error("🔐 POST /api/sync - Token object:", token);
       return NextResponse.json(
-        { error: "Not authenticated. Please sign in." },
+        { error: "Not authenticated. Please sign in.", debug: { hasToken: !!token, tokenKeys: token ? Object.keys(token) : [] } },
         { status: 401 }
       );
     }
@@ -201,18 +209,26 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Check authentication first
+    // Check authentication first - use auth() instead of getToken() for NextAuth v5
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    
+    console.log("🔐 GET /api/sync - Auth check (using auth()):", {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userEmail: session?.user?.email || "none",
+    });
+    
+    // Get token for Drive access (still need JWT for accessToken)
     const { getToken } = await import("next-auth/jwt");
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
     
-    console.log("🔐 GET /api/sync - Auth check:", {
+    console.log("🔐 GET /api/sync - Token check (for Drive access):", {
       hasToken: !!token,
       hasAccessToken: !!token?.accessToken,
-      tokenExpiresAt: token?.expiresAt,
-      userEmail: token?.email || "none",
     });
     
-    if (!token?.accessToken) {
+    if (!session || !token?.accessToken) {
       console.error("❌ GET /api/sync - Not authenticated!");
       return NextResponse.json(
         { error: "Not authenticated. Please sign in." },
