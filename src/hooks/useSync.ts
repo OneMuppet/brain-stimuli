@@ -96,7 +96,12 @@ export function useSync() {
       const shouldFullSync = lastSync === 0 || isLocalEmpty;
       const sinceParam = shouldFullSync ? "full=true" : `since=${lastSync}`;
       console.log("📥 Fetching from cloud:", sinceParam, shouldFullSync ? "(forced full sync - local empty)" : "");
-      const cloudResponse = await fetch(`/api/sync?${sinceParam}`);
+      const cloudResponse = await fetch(`/api/sync?${sinceParam}`, {
+        credentials: "include", // Ensure cookies are sent
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       
       if (!cloudResponse.ok) {
         const errorData = await cloudResponse.json().catch(() => ({}));
