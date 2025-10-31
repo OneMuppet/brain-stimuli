@@ -2,19 +2,27 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { OAuth2Client } from "google-auth-library";
 
-// Get environment variables (will be undefined if not set, NextAuth will handle)
+// Get environment variables - required for production
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
+// Validate environment variables at runtime
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !NEXTAUTH_SECRET) {
+  console.error("Missing required environment variables:");
+  console.error("GOOGLE_CLIENT_ID:", GOOGLE_CLIENT_ID ? "✅" : "❌");
+  console.error("GOOGLE_CLIENT_SECRET:", GOOGLE_CLIENT_SECRET ? "✅" : "❌");
+  console.error("NEXTAUTH_SECRET:", NEXTAUTH_SECRET ? "✅" : "❌");
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: NEXTAUTH_SECRET || "fallback-secret-for-dev", // NextAuth requires this
+  secret: NEXTAUTH_SECRET,
   trustHost: true, // Required for Amplify
   debug: process.env.NODE_ENV === "development",
   providers: [
     Google({
-      clientId: GOOGLE_CLIENT_ID || "",
-      clientSecret: GOOGLE_CLIENT_SECRET || "",
+      clientId: GOOGLE_CLIENT_ID!,
+      clientSecret: GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: "openid email profile https://www.googleapis.com/auth/drive.appdata",
