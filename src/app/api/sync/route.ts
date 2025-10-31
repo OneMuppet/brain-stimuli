@@ -23,10 +23,11 @@ export async function POST(req: NextRequest) {
     // Check authentication first
     const { getToken } = await import("next-auth/jwt");
     
-    // In production, NextAuth uses __Secure-next-auth.session-token
+    // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
+    // In production, it's __Secure-authjs.session-token
     const cookieName = process.env.NODE_ENV === "production" 
-      ? "__Secure-next-auth.session-token" 
-      : "next-auth.session-token";
+      ? "__Secure-authjs.session-token" 
+      : "authjs.session-token";
     
     console.log("🔐 POST /api/sync - Request check:", {
       hasCookieHeader: !!req.headers.get("cookie"),
@@ -230,11 +231,12 @@ export async function GET(req: NextRequest) {
     });
     
     // Get token for Drive access (still need JWT for accessToken)
-    // In production, NextAuth uses __Secure-next-auth.session-token, so we need to tell getToken
+    // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
+    // In production, it's __Secure-authjs.session-token
     const { getToken } = await import("next-auth/jwt");
     const cookieName = process.env.NODE_ENV === "production" 
-      ? "__Secure-next-auth.session-token" 
-      : "next-auth.session-token";
+      ? "__Secure-authjs.session-token" 
+      : "authjs.session-token";
     
     console.log("🔐 GET /api/sync - Cookie config:", {
       cookieName,
