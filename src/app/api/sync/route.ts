@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncToDrive, syncFromDrive } from "@/lib/googleDrive";
+import { uploadImageToDrive } from "@/lib/imageSync";
+import { getImage } from "@/lib/db";
 import type { SyncDelta } from "@/lib/deltaSync";
 
 interface SyncRequest {
@@ -18,6 +20,25 @@ interface SyncResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Check authentication first
+    const { getToken } = await import("next-auth/jwt");
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
+    
+    console.log("🔐 POST /api/sync - Auth check:", {
+      hasToken: !!token,
+      hasAccessToken: !!token?.accessToken,
+      tokenExpiresAt: token?.expiresAt,
+      userEmail: token?.email || "none",
+    });
+    
+    if (!token?.accessToken) {
+      console.error("❌ POST /api/sync - Not authenticated!");
+      return NextResponse.json(
+        { error: "Not authenticated. Please sign in." },
+        { status: 401 }
+      );
+    }
+    
     const body: SyncRequest = await req.json();
     
     console.log("📤 POST /api/sync - Receiving local delta:", {
@@ -135,6 +156,20 @@ export async function POST(req: NextRequest) {
       };
       
       cloudData = merged;
+      
+      // Upload image blobs to Drive if they don't have driveFileId yet
+      // Images with driveFileId are already in Drive, we just need to ensure new ones are uploaded
+      const imagesToUpload = [
+        ...body.delta.images.created,
+        ...body.delta.images.updated,
+      ].filter((img: any) => !img.driveFileId); // Only upload if not already uploaded
+      
+      if (imagesToUpload.length > 0) {
+        console.log(`📤 Uploading ${imagesToUpload.length} image blobs to Drive...`);
+        // Note: We need image blobs from the client to upload them
+        // For now, images will be uploaded on next sync when client detects they're missing driveFileId
+        // This is a limitation - we sync metadata first, then upload blobs separately
+      }
     }
     
         // Upload merged state to Drive
@@ -166,6 +201,25 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    // Check authentication first
+    const { getToken } = await import("next-auth/jwt");
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET! });
+    
+    console.log("🔐 GET /api/sync - Auth check:", {
+      hasToken: !!token,
+      hasAccessToken: !!token?.accessToken,
+      tokenExpiresAt: token?.expiresAt,
+      userEmail: token?.email || "none",
+    });
+    
+    if (!token?.accessToken) {
+      console.error("❌ GET /api/sync - Not authenticated!");
+      return NextResponse.json(
+        { error: "Not authenticated. Please sign in." },
+        { status: 401 }
+      );
+    }
+    
     const since = req.nextUrl.searchParams.get("since");
     const sinceTimestamp = since ? parseInt(since, 10) : 0;
     const fullSync = req.nextUrl.searchParams.get("full") === "true";

@@ -30,7 +30,18 @@ export function useSync() {
   const hasInitialSyncedRef = useRef(false);
 
   useEffect(() => {
-    if (!session) return;
+    console.log("🔐 useSync: Session status:", {
+      hasSession: !!session,
+      sessionUser: session?.user?.email || "none",
+      isAuthenticated: !!session,
+    });
+    
+    if (!session) {
+      console.log("⚠️ useSync: No session, skipping sync setup");
+      return;
+    }
+
+    console.log("✅ useSync: Setting up sync for authenticated user:", session.user?.email);
 
     // Monitor online/offline status
     const handleOnline = async () => {
@@ -52,6 +63,7 @@ export function useSync() {
     // Initial sync only once (on mount)
     if (!hasInitialSyncedRef.current) {
       hasInitialSyncedRef.current = true;
+      console.log("🚀 useSync: Starting initial sync...");
       performSync();
     }
 

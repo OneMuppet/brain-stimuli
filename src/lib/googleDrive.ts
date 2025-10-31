@@ -165,4 +165,3 @@ export async function syncFromDrive(req: Request) {
     return null;
   }
 }
-
