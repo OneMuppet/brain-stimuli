@@ -61,8 +61,8 @@ export async function syncToDrive(req: Request, data: any) {
   const content = JSON.stringify(data);
   
   // Log what we're saving
-  const sessionsCount = data?.sessions?.created?.length || 0 + data?.sessions?.updated?.length || 0;
-  const notesCount = data?.notes?.created?.length || 0 + data?.notes?.updated?.length || 0;
+  const sessionsCount = (data?.sessions?.created?.length || 0) + (data?.sessions?.updated?.length || 0);
+  const notesCount = (data?.notes?.created?.length || 0) + (data?.notes?.updated?.length || 0);
   const imagesCount = data?.images?.created?.length || 0;
   console.log("💾 Saving to Google Drive:", {
     fileId: fileId || "NEW FILE",
@@ -132,8 +132,8 @@ export async function syncFromDrive(req: Request) {
       const parsed = JSON.parse(text);
       
       // Log what we retrieved
-      const sessionsCount = parsed?.sessions?.created?.length || 0 + parsed?.sessions?.updated?.length || 0;
-      const notesCount = parsed?.notes?.created?.length || 0 + parsed?.notes?.updated?.length || 0;
+      const sessionsCount = (parsed?.sessions?.created?.length || 0) + (parsed?.sessions?.updated?.length || 0);
+      const notesCount = (parsed?.notes?.created?.length || 0) + (parsed?.notes?.updated?.length || 0);
       const imagesCount = parsed?.images?.created?.length || 0;
       console.log("📦 Retrieved from Google Drive:", {
         fileId,

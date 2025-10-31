@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
     
     console.log("📤 POST /api/sync - Receiving local delta:", {
       hasDelta: !!body.delta,
-      sessions: body.delta?.sessions?.created?.length || 0 + body.delta?.sessions?.updated?.length || 0,
-      notes: body.delta?.notes?.created?.length || 0 + body.delta?.notes?.updated?.length || 0,
+      sessions: (body.delta?.sessions?.created?.length || 0) + (body.delta?.sessions?.updated?.length || 0),
+      notes: (body.delta?.notes?.created?.length || 0) + (body.delta?.notes?.updated?.length || 0),
       images: body.delta?.images?.created?.length || 0,
     });
     
@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     let cloudData = await syncFromDrive(req);
     console.log("📥 POST /api/sync - Current cloud state:", {
       exists: !!cloudData,
-      sessions: cloudData?.sessions?.created?.length || 0 + cloudData?.sessions?.updated?.length || 0,
-      notes: cloudData?.notes?.created?.length || 0 + cloudData?.notes?.updated?.length || 0,
+      sessions: (cloudData?.sessions?.created?.length || 0) + (cloudData?.sessions?.updated?.length || 0),
+      notes: (cloudData?.notes?.created?.length || 0) + (cloudData?.notes?.updated?.length || 0),
       images: cloudData?.images?.created?.length || 0,
     });
     
@@ -139,8 +139,8 @@ export async function POST(req: NextRequest) {
     
         // Upload merged state to Drive
         console.log("💾 POST /api/sync - Uploading merged state to Drive:", {
-          sessions: cloudData?.sessions?.created?.length || 0 + cloudData?.sessions?.updated?.length || 0,
-          notes: cloudData?.notes?.created?.length || 0 + cloudData?.notes?.updated?.length || 0,
+          sessions: (cloudData?.sessions?.created?.length || 0) + (cloudData?.sessions?.updated?.length || 0),
+          notes: (cloudData?.notes?.created?.length || 0) + (cloudData?.notes?.updated?.length || 0),
           images: cloudData?.images?.created?.length || 0,
         });
         await syncToDrive(req, cloudData);
