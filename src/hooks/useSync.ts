@@ -72,11 +72,12 @@ export function useSync() {
       const syncMetadata = await getSyncMetadata();
       const lastSync = syncMetadata?.lastSyncTimestamp || 0;
       
-      // Step 1: Generate local delta
-      const localDelta = await generateLocalDelta(lastSync);
+      console.log("🔄 Starting sync, lastSync:", lastSync);
       
-      // Step 2: Get cloud delta (or full data if first sync)
+      // Step 1: Get cloud delta FIRST (or full data if first sync)
+      // This ensures we pull cloud data before generating local delta
       const sinceParam = lastSync > 0 ? `since=${lastSync}` : "full=true";
+      console.log("📥 Fetching from cloud:", sinceParam);
       const cloudResponse = await fetch(`/api/sync?${sinceParam}`);
       
       if (!cloudResponse.ok) {
@@ -88,6 +89,22 @@ export function useSync() {
       const responseData = await cloudResponse.json();
       const cloudDelta = responseData.delta || responseData.data;
       const syncTimestamp = responseData.syncTimestamp || Date.now();
+      
+      console.log("📦 Cloud data received:", {
+        hasData: !!responseData.data,
+        hasDelta: !!responseData.delta,
+        sessions: cloudDelta?.sessions?.created?.length || 0,
+        notes: cloudDelta?.notes?.created?.length || 0,
+        images: cloudDelta?.images?.created?.length || 0,
+      });
+      
+      // Step 2: Generate local delta (after fetching cloud, so we know what's new)
+      const localDelta = await generateLocalDelta(lastSync);
+      console.log("📤 Local delta:", {
+        sessions: localDelta.sessions.created.length + localDelta.sessions.updated.length,
+        notes: localDelta.notes.created.length + localDelta.notes.updated.length,
+        images: localDelta.images.created.length,
+      });
       
       // Step 3: Apply cloud changes locally (with conflict resolution)
       if (cloudDelta) {
@@ -117,12 +134,22 @@ export function useSync() {
           };
           
           const { conflicts } = await applyCloudDelta(fullDelta, "last-write-wins");
+          console.log("✅ Applied cloud data locally", {
+            conflicts: conflicts.length,
+            sessionsApplied: fullDelta.sessions.created.length + fullDelta.sessions.updated.length,
+            notesApplied: fullDelta.notes.created.length + fullDelta.notes.updated.length,
+          });
           if (conflicts.length > 0) {
             console.warn("Conflicts resolved:", conflicts);
           }
         } else if (cloudDelta) {
           // Delta sync - apply only changes
           const { conflicts } = await applyCloudDelta(cloudDelta, "last-write-wins");
+          console.log("✅ Applied cloud delta locally", {
+            conflicts: conflicts.length,
+            sessionsApplied: (cloudDelta.sessions?.created?.length || 0) + (cloudDelta.sessions?.updated?.length || 0),
+            notesApplied: (cloudDelta.notes?.created?.length || 0) + (cloudDelta.notes?.updated?.length || 0),
+          });
           if (conflicts.length > 0) {
             console.warn("Conflicts resolved:", conflicts);
           }

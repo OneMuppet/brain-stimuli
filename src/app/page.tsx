@@ -24,7 +24,7 @@ export default function Home() {
   const [mood] = useState(
     () => MOOD_LINES[Math.floor(Math.random() * MOOD_LINES.length)]
   );
-  const { isAuthenticated, isOnline, isSyncing } = useSync();
+  const { isAuthenticated, isOnline, isSyncing, lastSyncTime, error: syncError } = useSync();
 
   const loadSessions = useCallback(async () => {
     try {
@@ -40,6 +40,21 @@ export default function Home() {
   useEffect(() => {
     loadSessions().catch(console.error);
   }, [loadSessions]);
+
+  // Reload sessions after sync completes
+  useEffect(() => {
+    if (lastSyncTime && !isSyncing) {
+      console.log("Sync completed, reloading sessions...");
+      loadSessions().catch(console.error);
+    }
+  }, [lastSyncTime, isSyncing, loadSessions]);
+
+  // Log sync errors
+  useEffect(() => {
+    if (syncError) {
+      console.error("Sync error:", syncError);
+    }
+  }, [syncError]);
 
   if (loading) {
     return (
