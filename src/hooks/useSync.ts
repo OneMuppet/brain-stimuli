@@ -24,7 +24,7 @@ export function useSync() {
     error: null,
   });
   
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const syncInProgressRef = useRef(false);
   const hasInitialSyncedRef = useRef(false);
 

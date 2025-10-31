@@ -79,9 +79,9 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
       updated: allImages
         .filter(img => {
           const createdAt = img.createdAt || img.timestamp;
-          return img.syncTimestamp && 
-                 img.syncTimestamp > 0 && 
-                 img.syncTimestamp < (img.lastModified || createdAt);
+           return img.syncTimestamp && 
+                  img.syncTimestamp > 0 && 
+                  img.syncTimestamp < (img.timestamp || createdAt || 0);
         })
         .map(img => ({
           id: img.id,

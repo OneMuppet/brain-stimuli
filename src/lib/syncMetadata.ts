@@ -5,7 +5,8 @@ const SYNC_METADATA_ID = "sync_metadata";
 export async function getSyncMetadata(): Promise<SyncMetadata | null> {
   const db = await getDB();
   try {
-    return await db.get("syncMetadata", SYNC_METADATA_ID);
+    const metadata = await db.get("syncMetadata", SYNC_METADATA_ID);
+    return metadata || null;
   } catch {
     return null;
   }
