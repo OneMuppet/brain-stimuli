@@ -72,12 +72,17 @@ export function useSync() {
       const syncMetadata = await getSyncMetadata();
       const lastSync = syncMetadata?.lastSyncTimestamp || 0;
       
-      console.log("🔄 Starting sync, lastSync:", lastSync);
+      // Check if local database is empty - if so, force full sync
+      const localSessions = await db.listSessions();
+      const isLocalEmpty = localSessions.length === 0;
       
-      // Step 1: Get cloud delta FIRST (or full data if first sync)
-      // This ensures we pull cloud data before generating local delta
-      const sinceParam = lastSync > 0 ? `since=${lastSync}` : "full=true";
-      console.log("📥 Fetching from cloud:", sinceParam);
+      console.log("🔄 Starting sync, lastSync:", lastSync, "localEmpty:", isLocalEmpty);
+      
+      // Step 1: Get cloud delta FIRST (or full data if first sync or local is empty)
+      // If local database is empty, force full sync to restore all data
+      const shouldFullSync = lastSync === 0 || isLocalEmpty;
+      const sinceParam = shouldFullSync ? "full=true" : `since=${lastSync}`;
+      console.log("📥 Fetching from cloud:", sinceParam, shouldFullSync ? "(forced full sync - local empty)" : "");
       const cloudResponse = await fetch(`/api/sync?${sinceParam}`);
       
       if (!cloudResponse.ok) {
