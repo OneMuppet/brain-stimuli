@@ -93,18 +93,32 @@ export default function Home() {
           <DecryptText text={mood} speed={30} delay={300} />
         </motion.div>
 
-        {/* Sync status indicator */}
-        {isAuthenticated && (
-          <div className="console-text text-xs mb-4 flex items-center justify-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${
-              isSyncing ? "bg-cyan-400 animate-pulse" : 
-              isOnline ? "bg-green-400" : "bg-yellow-400"
-            }`} />
-            {isSyncing ? "SYNCING..." : 
-             isOnline ? "CLOUD SYNC ACTIVE" : 
-             "OFFLINE - CHANGES QUEUED"}
-          </div>
-        )}
+            {/* Sync status indicator */}
+            {isAuthenticated && (
+              <div className="console-text text-xs mb-4 flex items-center justify-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className={`w-1.5 h-1.5 rounded-full ${
+                    isSyncing ? "bg-cyan-400 animate-pulse" : 
+                    isOnline ? "bg-green-400" : "bg-yellow-400"
+                  }`} />
+                  {isSyncing ? "SYNCING..." : 
+                   isOnline ? "CLOUD SYNC ACTIVE" : 
+                   "OFFLINE - CHANGES QUEUED"}
+                </div>
+                <button
+                  onClick={async () => {
+                    if (confirm("Reset sync state? This will clear all sync timestamps and force a full sync on next sync.")) {
+                      await resetSyncState();
+                      window.location.reload();
+                    }
+                  }}
+                  className="text-[10px] text-cyan-400/60 hover:text-cyan-400 transition-colors underline"
+                  title="Reset sync state (forces full sync)"
+                >
+                  [RESET SYNC]
+                </button>
+              </div>
+            )}
 
         {/* New Session Button */}
         <div className="flex items-center justify-end mb-8 hud-divider">
