@@ -3,15 +3,47 @@ import Google from "next-auth/providers/google";
 import { OAuth2Client } from "google-auth-library";
 
 // Get environment variables - required for production
-// Use process.env directly in NextAuth config to ensure they're read at runtime
+// Log for debugging (only in development or when explicitly enabled)
+const isDebugMode = process.env.NODE_ENV === "development" || process.env.NEXTAUTH_DEBUG === "true";
+
+if (isDebugMode) {
+  console.log("NextAuth Environment Variables Check:");
+  console.log("NEXTAUTH_SECRET:", process.env.NEXTAUTH_SECRET ? "✅ Set" : "❌ Missing");
+  console.log("GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? `✅ Set (${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...)` : "❌ Missing");
+  console.log("GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "✅ Set" : "❌ Missing");
+  console.log("NEXTAUTH_URL:", process.env.NEXTAUTH_URL || "Not set");
+}
+
+// NextAuth requires secret - fail early if missing
+if (!process.env.NEXTAUTH_SECRET) {
+  const error = new Error(
+    "NEXTAUTH_SECRET is required but was not found. " +
+    "Please set NEXTAUTH_SECRET in your environment variables. " +
+    "Available env vars: " + Object.keys(process.env).filter(k => k.includes("AUTH") || k.includes("GOOGLE")).join(", ")
+  );
+  console.error(error);
+  throw error;
+}
+
+// Validate Google OAuth credentials
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  const error = new Error(
+    "Google OAuth credentials are required. " +
+    `GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID ? "Set" : "Missing"}, ` +
+    `GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? "Set" : "Missing"}`
+  );
+  console.error(error);
+  throw error;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true, // Required for Amplify
-  debug: process.env.NODE_ENV === "development",
+  debug: isDebugMode,
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
           scope: "openid email profile https://www.googleapis.com/auth/drive.appdata",
