@@ -187,6 +187,7 @@ export async function GET(req: NextRequest) {
     // If full sync requested, return all data
     if (fullSync || sinceTimestamp === 0) {
       return NextResponse.json({
+        success: true,
         data: cloudState,
         syncTimestamp,
       } satisfies SyncResponse);
@@ -230,6 +231,7 @@ export async function GET(req: NextRequest) {
     };
     
     return NextResponse.json({
+      success: true,
       delta,
       syncTimestamp,
     } satisfies SyncResponse);
