@@ -8,6 +8,7 @@ import { getLevel } from "@/lib/scoring";
 import { DecryptText } from "@/components/DecryptText";
 import { SignIn } from "@/components/SignIn";
 import { useSync } from "@/hooks/useSync";
+import { resetSyncState } from "@/lib/resetSync";
 
 const MOOD_LINES = [
   "Session Console Ready — Engage.",
