@@ -163,7 +163,7 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
           }
           const createdAt = img.createdAt || img.timestamp;
           // Image was synced but modified after last sync
-          return img.syncTimestamp < (img.timestamp || createdAt || 0);
+          return img.syncTimestamp && img.syncTimestamp < (img.timestamp || createdAt || 0);
         })
         .map(img => ({
           id: img.id,
