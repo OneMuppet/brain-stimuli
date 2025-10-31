@@ -4,8 +4,10 @@ frontend:
     preBuild:
       commands:
         - npm ci
-        # Verify environment variables are available
+        # Verify environment variables are available during build
+        - echo "Checking environment variables:"
         - echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:0:20}..."
+        - echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:0:10}..."
         - echo "NEXTAUTH_URL=${NEXTAUTH_URL}"
     build:
       commands:
