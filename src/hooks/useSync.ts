@@ -162,7 +162,8 @@ export function useSync() {
         localDelta.sessions.updated.length > 0 ||
         localDelta.notes.created.length > 0 ||
         localDelta.notes.updated.length > 0 ||
-        localDelta.images.created.length > 0;
+        localDelta.images.created.length > 0 ||
+        localDelta.images.updated.length > 0;
       
       if (hasLocalChanges) {
         const syncResponse = await fetch("/api/sync", {

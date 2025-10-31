@@ -52,6 +52,26 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
     totalImages: allImages.length,
     sessionsWithSyncTimestamp: sessions.filter(s => s.syncTimestamp && s.syncTimestamp > 0).length,
     notesWithSyncTimestamp: allNotes.filter(n => n.syncTimestamp && n.syncTimestamp > 0).length,
+    imagesWithSyncTimestamp: allImages.filter(img => img.syncTimestamp && img.syncTimestamp > 0).length,
+    createdSessions: sessions.filter(s => {
+      const hasBeenSynced = s.syncTimestamp && s.syncTimestamp > 0;
+      if (isFirstSync) return !hasBeenSynced;
+      if (!hasBeenSynced) return true;
+      return s.createdAt > sinceTimestamp && s.createdAt === s.lastModified;
+    }).length,
+    createdNotes: allNotes.filter(n => {
+      const hasBeenSynced = n.syncTimestamp && n.syncTimestamp > 0;
+      if (isFirstSync) return !hasBeenSynced;
+      if (!hasBeenSynced) return true;
+      return n.createdAt > sinceTimestamp && n.createdAt === n.lastModified;
+    }).length,
+    createdImages: allImages.filter(img => {
+      const hasBeenSynced = img.syncTimestamp && img.syncTimestamp > 0;
+      if (isFirstSync) return !hasBeenSynced;
+      if (!hasBeenSynced) return true;
+      const createdAt = img.createdAt || img.timestamp;
+      return createdAt > sinceTimestamp;
+    }).length,
   });
   
   // Filter logic:
@@ -110,13 +130,18 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
     images: {
       created: allImages
         .filter(img => {
-          const createdAt = img.createdAt || img.timestamp;
+          const hasBeenSynced = img.syncTimestamp && img.syncTimestamp > 0;
           if (isFirstSync) {
             // First sync: include all images that haven't been synced
-            return !img.syncTimestamp || img.syncTimestamp === 0;
+            return !hasBeenSynced;
           }
-          return createdAt > sinceTimestamp && 
-                 (!img.syncTimestamp || img.syncTimestamp === 0);
+          // Incremental sync: include unsynced images OR images created after lastSync
+          if (!hasBeenSynced) {
+            // Not synced yet - include it
+            return true;
+          }
+          const createdAt = img.createdAt || img.timestamp;
+          return createdAt > sinceTimestamp;
         })
         .map(img => ({
           id: img.id,
@@ -131,10 +156,14 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
             // First sync: don't include in "updated"
             return false;
           }
+          const hasBeenSynced = img.syncTimestamp && img.syncTimestamp > 0;
+          if (!hasBeenSynced) {
+            // Not synced yet - don't include in "updated" (it's in "created")
+            return false;
+          }
           const createdAt = img.createdAt || img.timestamp;
-           return img.syncTimestamp && 
-                  img.syncTimestamp > 0 && 
-                  img.syncTimestamp < (img.timestamp || createdAt || 0);
+          // Image was synced but modified after last sync
+          return img.syncTimestamp < (img.timestamp || createdAt || 0);
         })
         .map(img => ({
           id: img.id,
