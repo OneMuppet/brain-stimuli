@@ -17,18 +17,9 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Convert File to Blob - FormData gives us File, which extends Blob
-    // But we need to ensure we have a proper Blob for the Drive upload
-    let imageBlob: Blob;
-    if (blob instanceof File) {
-      imageBlob = blob;
-    } else if (blob instanceof Blob) {
-      // Convert Blob to ArrayBuffer and back to ensure we have the data
-      const arrayBuffer = await (blob as Blob).arrayBuffer();
-      imageBlob = new Blob([arrayBuffer], { type: contentType });
-    } else {
-      throw new Error("Invalid blob type");
-    }
+    // FormData gives us File, which extends Blob
+    // We can use it directly as a Blob
+    const imageBlob: Blob = blob as File;
     
     // Create Image object for upload
     const image = {
