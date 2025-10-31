@@ -3,6 +3,8 @@ import Google from "next-auth/providers/google";
 import { OAuth2Client } from "google-auth-library";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true, // Required for Amplify
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
