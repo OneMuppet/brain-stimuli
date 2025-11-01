@@ -3,6 +3,7 @@ import { getDB } from "./db";
 import type { Session, Note, Image } from "@/domain/entities";
 import type { SyncDelta } from "@/domain/types/SyncDelta";
 import { getSyncMetadata } from "./syncMetadata";
+import { getPendingChanges } from "./pendingChanges";
 
 // Re-export SyncDelta for backward compatibility
 export type { SyncDelta } from "@/domain/types/SyncDelta";
@@ -21,6 +22,20 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
   }
   
   const syncMetadata = await getSyncMetadata();
+  const pendingChanges = await getPendingChanges();
+  
+  // Extract deleted items from pending changes
+  const deletedSessions = pendingChanges
+    .filter(pc => pc.entityType === "session" && pc.operation === "delete")
+    .map(pc => pc.entityId);
+  
+  const deletedNotes = pendingChanges
+    .filter(pc => pc.entityType === "note" && pc.operation === "delete")
+    .map(pc => pc.entityId);
+  
+  const deletedImages = pendingChanges
+    .filter(pc => pc.entityType === "image" && pc.operation === "delete")
+    .map(pc => pc.entityId);
   
   // Check if this is a full sync (sinceTimestamp === 0)
   // An item is "synced" if it has syncTimestamp set and syncTimestamp > 0
@@ -54,7 +69,7 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
         const hasBeenSynced = s.syncTimestamp && s.syncTimestamp > 0;
         return hasBeenSynced && s.lastModified > sinceTimestamp && s.createdAt !== s.lastModified;
       }),
-      deleted: [], // Deleted items tracked separately in pending changes
+      deleted: deletedSessions,
     },
     notes: {
       created: allNotes.filter(n => {
@@ -77,7 +92,7 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
         const hasBeenSynced = n.syncTimestamp && n.syncTimestamp > 0;
         return hasBeenSynced && n.lastModified > sinceTimestamp && n.createdAt !== n.lastModified;
       }),
-      deleted: [],
+      deleted: deletedNotes,
     },
     images: {
       created: allImages
@@ -124,7 +139,7 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
           createdAt: img.createdAt || img.timestamp,
           driveFileId: img.driveFileId,
         })),
-      deleted: [],
+      deleted: deletedImages,
     },
     metadata: {
       lastLocalChangeTimestamp: syncMetadata?.lastLocalChangeTimestamp || 0,

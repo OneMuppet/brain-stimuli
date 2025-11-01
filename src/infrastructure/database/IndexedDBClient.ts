@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from "idb";
-import type { Session, Note, Image, SyncMetadata, PendingChange } from "@/domain/entities";
+import type { Session, Note, Image, SyncMetadata, PendingChange, Achievement } from "@/domain/entities";
 import { CONSTANTS } from "@/shared/config/constants";
 
 /**
@@ -29,6 +29,11 @@ interface BrainStimuliDB extends DBSchema {
     key: string;
     value: PendingChange;
     indexes: { timestamp: number; entityType: string };
+  };
+  achievements: {
+    key: string;
+    value: Achievement;
+    indexes: { unlockedAt: number };
   };
 }
 
@@ -77,6 +82,17 @@ export function getDB(): Promise<IDBPDatabase<BrainStimuliDB>> {
           });
           pendingChangesStore.createIndex("timestamp", "timestamp");
           pendingChangesStore.createIndex("entityType", "entityType");
+        }
+        
+        // Migrate from version 2 to 3 - add achievements store
+        if (oldVersion < 3) {
+          // Check if achievements store doesn't exist before creating
+          if (!db.objectStoreNames.contains("achievements")) {
+            const achievementsStore = db.createObjectStore("achievements", {
+              keyPath: "id",
+            });
+            achievementsStore.createIndex("unlockedAt", "unlockedAt");
+          }
         }
       },
     });

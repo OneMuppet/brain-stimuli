@@ -6,6 +6,7 @@ import { BootSequence } from "@/components/BootSequence";
 import { ReticleCursor } from "@/components/ReticleCursor";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SystemToolbar } from "@/components/SystemToolbar";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -30,6 +31,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Brain Stimuli Console",
   description: "High-focus note console with gamified flow",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -50,6 +59,7 @@ export default function RootLayout({
             <BootSequence />
             <ReticleCursor />
             <DataStreamBackground />
+            <SystemToolbar />
             {children}
           </SessionProvider>
         </ThemeProvider>

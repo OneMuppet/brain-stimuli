@@ -11,6 +11,8 @@ import { DecryptText } from "@/components/DecryptText";
 import { SignIn } from "@/components/SignIn";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { useSync } from "@/hooks/useSync";
+import { checkAchievements } from "@/lib/achievementUtils";
+import { SearchModal } from "@/components/SearchModal";
 
 const MOOD_LINES = [
   "Session Console Ready — Engage.",
@@ -28,6 +30,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [clickedSessionId, setClickedSessionId] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [mood] = useState(
     () => MOOD_LINES[Math.floor(Math.random() * MOOD_LINES.length)]
   );
@@ -35,7 +38,10 @@ export default function Home() {
 
   // All hooks must be called before any conditional returns
   const loadSessions = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await listSessions();
       setSessions(data);
@@ -49,6 +55,12 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       loadSessions().catch(() => {});
+      
+      // Retroactive achievement scanning on mount
+      checkAchievements().catch(() => {});
+    } else {
+      // If not authenticated, set loading to false so we can show WelcomeScreen
+      setLoading(false);
     }
   }, [loadSessions, isAuthenticated]);
 
@@ -58,6 +70,20 @@ export default function Home() {
       loadSessions().catch(() => {});
     }
   }, [lastSyncTime, isSyncing, loadSessions, isAuthenticated]);
+
+  // Keyboard shortcut for search (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
 
   // Filter sessions by search query
   const filteredSessions = useMemo(() => {
@@ -174,6 +200,7 @@ export default function Home() {
                   color: "var(--text-primary)",
                   touchAction: "manipulation",
                   padding: "20px",
+                  fontSize: "16px",
                 }}
               />
               {searchQuery && (
@@ -338,6 +365,12 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
     </div>
   );
 }

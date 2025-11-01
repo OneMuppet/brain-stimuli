@@ -218,6 +218,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 .tiptap {
                     outline: none;
                     color: var(--text-body);
+                    font-size: 16px;
                 }
                 
                 .tiptap p {

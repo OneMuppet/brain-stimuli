@@ -81,6 +81,7 @@ export default function NewSessionPage() {
                 border: "1px solid rgba(var(--accent-rgb), 0.3)",
                 boxShadow: "inset 0 0 8px rgba(var(--accent-rgb), 0.08)",
                 color: "var(--text-primary)",
+                fontSize: "16px",
               }}
             />
           </div>

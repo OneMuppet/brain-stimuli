@@ -225,7 +225,7 @@ body::before {
   padding: 0 !important;
 }
 
-/* Corner ticks (2-3px length, technical precision) */
+/* Corner reticles (floating outside frame with hover animations) - subtle like profile badge */
 .corner-hud {
   position: relative;
 }
@@ -234,23 +234,62 @@ body::before {
 .corner-hud::after {
   content: "";
   position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(var(--accent-rgb), 0.5);
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.4;
 }
 
 .corner-hud::before {
-  top: -1px;
-  left: -1px;
+  top: -3px;
+  left: -3px;
   border-right: none;
   border-bottom: none;
 }
 
 .corner-hud::after {
-  bottom: -1px;
-  right: -1px;
+  bottom: -3px;
+  right: -3px;
   border-left: none;
   border-top: none;
+}
+
+/* Hover animations for corner reticles - expand outward on hover */
+.corner-hud:hover::before {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  opacity: 1;
+  top: -5px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+}
+
+.corner-hud:hover::after {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  opacity: 1;
+  bottom: -5px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+}
+
+/* Interactive elements with glow effect (e.g., profile badge) */
+.corner-hud-interactive:hover::before,
+.corner-hud-interactive:hover::after {
+  border-color: rgba(var(--accent-rgb), 1);
+  box-shadow: 
+    0 0 8px rgba(var(--accent-rgb), 0.5),
+    inset 0 0 4px rgba(var(--accent-rgb), 0.2);
+  transform: scale(1.15);
+}
+
+/* Extra animation for hover-lock elements */
+.corner-hud.hover-lock::before,
+.corner-hud.hover-lock::after {
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════

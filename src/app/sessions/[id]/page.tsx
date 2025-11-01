@@ -20,13 +20,19 @@ import {
   updateSession,
   getImageUrl,
 } from "@/lib/db";
-import { convertImageIdsToBlobUrls } from "@/lib/noteImageUtils";
+import { convertImageIdsToBlobUrls, extractImageIdsFromHtml } from "@/lib/noteImageUtils";
 import type { NoteEditorHandle } from "@/components/NoteEditor";
 import { getLevel, getProgressToNextLevel } from "@/lib/scoring";
 import { XPBar } from "@/components/XPBar";
 import { PowerCard } from "@/components/PowerCard";
 import { XPBubble } from "@/components/XPBubble";
 import { DecryptText } from "@/components/DecryptText";
+import { exportSessionToPDF } from "@/lib/pdfExport";
+import { checkAchievements } from "@/lib/achievementUtils";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import { deleteSession } from "@/lib/db";
+import { IconExport } from "@/components/icons/IconExport";
+import { IconDelete } from "@/components/icons/IconDelete";
 
 const COMBO_WINDOW = 5000; // 5s combo window
 const XP_PER_NOTE = 5;
@@ -37,6 +43,12 @@ export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+  
+  // Delete state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
 
   // All hooks must be called before any conditional returns
   const [session, setSession] = useState<Session | null>(null);
@@ -91,6 +103,9 @@ export default function SessionDetailPage() {
       const newScore = session.score + XP_PER_IMAGE;
       const updated = await updateSession(sessionId, { score: newScore });
       if (updated) setSession(updated);
+      
+      // Check achievements
+      await checkAchievements(sessionId).catch(() => {});
     } catch (error) {
       // Silent error handling
     }
@@ -113,6 +128,15 @@ export default function SessionDetailPage() {
       const newScore = session.score + XP_PER_NOTE;
       const updated = await updateSession(sessionId, { score: newScore });
       if (updated) setSession(updated);
+      
+      // Check achievements
+      await checkAchievements(sessionId).catch(() => {});
+      
+      // Rebuild search index after note save
+      if (typeof window !== "undefined") {
+        const { getSearchIndex } = await import("@/lib/searchIndex");
+        getSearchIndex().buildIndex().catch(() => {});
+      }
     } catch (error) {
       // Silent error handling
     }
@@ -280,41 +304,109 @@ export default function SessionDetailPage() {
           />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 mt-2">
-          <Link
-            href="/"
-            className="btn-neon-outline hover-lock text-sm"
-            style={{ touchAction: "manipulation" }}
-          >
-            ← BACK
-          </Link>
-        </div>
-
-        {/* Title */}
-        <motion.h1
+        {/* Unified Header Panel */}
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-          className="heading-1 mb-2"
-          style={{ 
-            fontFamily: "var(--font-space-grotesk, sans-serif)",
-            color: "var(--text-primary)",
-          }}
+          className="hud-panel corner-hud mb-6"
         >
-          <DecryptText text={session.title.toUpperCase()} speed={35} />
-        </motion.h1>
+          {/* Navigation and Actions Row */}
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <Link
+              href="/"
+              className="btn-neon-outline hover-lock text-sm"
+              style={{ touchAction: "manipulation" }}
+            >
+              ← BACK
+            </Link>
+            
+            {/* Action Buttons Group */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (session && !isExporting) {
+                    setIsExporting(true);
+                    try {
+                      // Get current editor content (may have unsaved changes)
+                      const note = notes[0] || null;
+                      let currentContent = note?.content || "";
+                      
+                      // If editor exists, get current content (which may have unsaved removals)
+                      if (noteEditorRef.current?.editor) {
+                        currentContent = noteEditorRef.current.editor.getHTML();
+                      }
+                      
+                      // Only include images that are actually referenced in the current content
+                      let filteredImages = images;
+                      if (currentContent) {
+                        const referencedImageIds = extractImageIdsFromHtml(currentContent);
+                        filteredImages = images.filter((img) => referencedImageIds.has(img.id));
+                      } else {
+                        // No content means no images should be exported
+                        filteredImages = [];
+                      }
+                      
+                      await exportSessionToPDF(session, note, filteredImages);
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  }
+                }}
+                disabled={isExporting}
+                className="btn-neon-outline hover-lock flex items-center justify-center w-10 h-10 p-0"
+                style={{ 
+                  touchAction: "manipulation",
+                  color: "var(--accent)",
+                  opacity: isExporting ? 0.6 : 1,
+                }}
+                title={isExporting ? "EXPORTING..." : "EXPORT PDF"}
+              >
+                <IconExport />
+              </button>
+              <button
+                onClick={() => setDeleteModalOpen(true)}
+                className="btn-neon-outline hover-lock flex items-center justify-center w-10 h-10 p-0"
+                style={{ 
+                  touchAction: "manipulation",
+                  color: "var(--accent)",
+                }}
+                title="DELETE SESSION"
+              >
+                <IconDelete />
+              </button>
+            </div>
+          </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="console-text mb-4"
-        >
-          <DecryptText text="Session Console Ready — Engage." speed={25} delay={200} />
+          {/* Session Title */}
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="heading-1 mb-2"
+            style={{ 
+              fontFamily: "var(--font-space-grotesk, sans-serif)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <DecryptText text={session.title.toUpperCase()} speed={35} />
+          </motion.h1>
+
+          {/* Session Metadata */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="console-text text-xs"
+            style={{ color: "rgba(var(--accent-rgb), 0.7)" }}
+          >
+            <DecryptText 
+              text={`Session Console Ready — Engage. | ${new Date(session.createdAt).toLocaleDateString()}`} 
+              speed={25} 
+              delay={300} 
+            />
+          </motion.div>
         </motion.div>
-
-        <div className="hud-divider mb-4" />
 
         {/* Note Editor */}
         <motion.div
@@ -347,6 +439,21 @@ export default function SessionDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={async () => {
+          if (session) {
+            await deleteSession(session.id);
+            router.push("/");
+          }
+        }}
+        title="DELETE SESSION"
+        message="Are you sure you want to delete this session? This will permanently delete the session, all notes, and all images. This action will sync to all your devices."
+        itemName={session?.title}
+      />
     </div>
   );
 }

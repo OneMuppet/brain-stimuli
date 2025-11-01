@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { getLevel } from "@/lib/scoring";
 import { listSessions } from "@/lib/db";
-import { resetSyncState } from "@/lib/resetSync";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export function SignIn() {
@@ -310,6 +309,7 @@ export function SignIn() {
                       </motion.div>
                     </AnimatePresence>
                   </motion.div>
+                  
                 </div>
 
                 {/* Divider */}
@@ -411,37 +411,6 @@ export function SignIn() {
                   <ThemeSwitcher />
                 </motion.div>
 
-                {/* Reset Sync Button (Emergency) */}
-                <motion.button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (
-                      confirm(
-                        "Reset sync state? This will clear all sync timestamps and force a full sync on next sync."
-                      )
-                    ) {
-                      await resetSyncState();
-                      window.location.reload();
-                    }
-                  }}
-                  className="w-full relative px-3 py-1 text-[8px] font-mono tracking-wider uppercase transition-colors text-center mb-2"
-                  style={{ 
-                    touchAction: "manipulation",
-                    color: "rgba(var(--accent-rgb), 0.4)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.6)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.4)";
-                  }}
-                  initial={{ y: 5, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.15, delay: 0.16 }}
-                  title="Reset sync state (emergency only)"
-                >
-                  <span className="relative z-10">[RESET SYNC]</span>
-                </motion.button>
 
                 {/* Disconnect Button */}
                 <motion.button

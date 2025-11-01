@@ -5,4 +5,5 @@
 export type { SessionRepository } from "./SessionRepository";
 export type { NoteRepository } from "./NoteRepository";
 export type { ImageRepository } from "./ImageRepository";
+export type { AchievementRepository } from "./AchievementRepository";
 

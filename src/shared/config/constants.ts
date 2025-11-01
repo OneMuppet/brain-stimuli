@@ -4,7 +4,7 @@
 
 export const CONSTANTS = {
   DB_NAME: "brain-stimuli-db",
-  DB_VERSION: 2,
+  DB_VERSION: 3,
   DRIVE_FILE_NAME: "brain-stimuli-data.json",
   
   // Sync

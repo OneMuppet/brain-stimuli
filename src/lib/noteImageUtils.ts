@@ -119,3 +119,28 @@ export function prepareNoteContentForSave(html: string): string {
   return doc.body.innerHTML || html;
 }
 
+/**
+ * Extract image IDs from note HTML content
+ * Returns a Set of image IDs that are referenced in the HTML
+ */
+export function extractImageIdsFromHtml(html: string): Set<string> {
+  const imageIds = new Set<string>();
+  
+  if (!html) {
+    return imageIds;
+  }
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const imgElements = doc.querySelectorAll("img");
+  
+  for (const img of Array.from(imgElements)) {
+    const imageId = img.getAttribute("data-image-id");
+    if (imageId) {
+      imageIds.add(imageId);
+    }
+  }
+  
+  return imageIds;
+}
+
