@@ -4,7 +4,7 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "jsdom",
+    environment: "happy-dom",
     setupFiles: ["./src/__tests__/setup.ts"],
     coverage: {
       provider: "v8",
@@ -16,6 +16,12 @@ export default defineConfig({
         "**/*.d.ts",
         "**/types/**",
       ],
+    },
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
     },
   },
   resolve: {
