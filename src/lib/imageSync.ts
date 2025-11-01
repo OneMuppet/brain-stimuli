@@ -1,7 +1,8 @@
 // Image blob sync utilities for Google Drive
 import { getDriveClient } from "./googleDrive";
-import type { Image } from "./db";
+import type { Image } from "@/domain/entities";
 import { Readable } from "stream";
+import { logger } from "@/shared/utils/logger";
 
 /**
  * Upload an image blob to Google Drive appDataFolder
@@ -14,13 +15,18 @@ export async function uploadImageToDrive(req: Request, image: Image): Promise<st
   let buffer: Buffer;
   if (image.data instanceof Buffer) {
     buffer = image.data;
-  } else if (image.data instanceof Blob) {
+  } else if (typeof Blob !== "undefined" && image.data instanceof Blob) {
     buffer = Buffer.from(await image.data.arrayBuffer());
   } else if (image.data instanceof ArrayBuffer) {
     buffer = Buffer.from(image.data);
   } else {
     // Try to convert to ArrayBuffer first
-    buffer = Buffer.from(await (image.data as any).arrayBuffer());
+    const dataWithArrayBuffer = image.data as { arrayBuffer: () => Promise<ArrayBuffer> };
+    if (typeof dataWithArrayBuffer.arrayBuffer === "function") {
+      buffer = Buffer.from(await dataWithArrayBuffer.arrayBuffer());
+    } else {
+      throw new Error("Unable to convert image.data to Buffer");
+    }
   }
   
   // Convert Buffer to stream for Google Drive API
@@ -74,7 +80,7 @@ export async function downloadImageFromDrive(req: Request, driveFileId: string, 
   const arrayBuffer = response.data as ArrayBuffer;
   const blob = new Blob([arrayBuffer], { type: contentType });
   
-  console.log(`✅ Downloaded image from Drive: ${driveFileId} (${blob.size} bytes)`);
+  logger.debug(`Downloaded image from Drive: ${driveFileId}`, { size: blob.size });
   return blob;
 }
 

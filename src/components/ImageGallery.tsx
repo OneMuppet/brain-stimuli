@@ -28,7 +28,7 @@ export function ImageGallery({ images, onDelete }: ImageGalleryProps) {
           urls.set(image.id, url);
           objectUrlsRef.current.push(url);
         } catch (error) {
-          console.error("Failed to load image URL:", error);
+          // Silent error handling - image will just not display
         }
       }
       if (!cancelled) setImageUrls(urls);

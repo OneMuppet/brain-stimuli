@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { downloadImageFromDrive } from "@/lib/imageSync";
+import { logger } from "@/shared/utils/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Download blob from Drive
-    const blob = await downloadImageFromDrive(req as any, driveFileId, contentType);
+    const blob = await downloadImageFromDrive(req as Request, driveFileId, contentType);
     
     // Convert blob to base64 for JSON response
     const arrayBuffer = await blob.arrayBuffer();
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
       data: base64, // Base64-encoded image data
     });
   } catch (error) {
-    console.error("Error restoring image:", error);
+    logger.error("Error restoring image", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to restore image" },
       { status: 500 }

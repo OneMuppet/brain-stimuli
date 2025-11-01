@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadImageToDrive } from "@/lib/imageSync";
 import { getDB } from "@/lib/db";
+import { logger } from "@/shared/utils/logger";
+import type { Image } from "@/domain/entities";
 
 // Configure route to handle large file uploads
 export const runtime = "nodejs";
@@ -11,11 +13,12 @@ export async function POST(req: NextRequest) {
     let formData: FormData;
     try {
       formData = await req.formData();
-    } catch (formError: any) {
+    } catch (formError: unknown) {
       // If FormData parsing fails, try to get more info
-      console.error("FormData parsing error:", formError);
+      logger.error("FormData parsing error", formError);
+      const errorMessage = formError instanceof Error ? formError.message : "Unknown error";
       return NextResponse.json(
-        { error: `Failed to parse FormData: ${formError.message || "Unknown error"}` },
+        { error: `Failed to parse FormData: ${errorMessage}` },
         { status: 400 }
       );
     }
@@ -36,44 +39,49 @@ export async function POST(req: NextRequest) {
     // Handle different file types that might come from FormData
     let buffer: Buffer;
     try {
-      if (blobFile instanceof File || blobFile instanceof Blob) {
-        const arrayBuffer = await blobFile.arrayBuffer();
+      // Check if it's a File or has arrayBuffer method (Blob-like)
+      const hasArrayBuffer = blobFile && typeof blobFile === "object" && "arrayBuffer" in blobFile && typeof (blobFile as { arrayBuffer?: () => Promise<ArrayBuffer> }).arrayBuffer === "function";
+      if (blobFile instanceof File || hasArrayBuffer) {
+        const arrayBuffer = await (blobFile as File | { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer();
         buffer = Buffer.from(arrayBuffer);
       } else if (typeof blobFile === "string") {
         // If it's already a string, try to decode it
         buffer = Buffer.from(blobFile, "base64");
       } else {
         // Fallback: try to get bytes directly
-        if ((blobFile as any).arrayBuffer) {
-          const arrayBuffer = await (blobFile as any).arrayBuffer();
+        const blobWithArrayBuffer = blobFile as { arrayBuffer?: () => Promise<ArrayBuffer> };
+        if (typeof blobWithArrayBuffer.arrayBuffer === "function") {
+          const arrayBuffer = await blobWithArrayBuffer.arrayBuffer();
           buffer = Buffer.from(arrayBuffer);
         } else {
           // Last resort: wrap in Response to get arrayBuffer
-          const response = new Response(blobFile as any);
+          const response = new Response(blobFile as Blob);
           const arrayBuffer = await response.arrayBuffer();
           buffer = Buffer.from(arrayBuffer);
         }
       }
-    } catch (bufferError: any) {
-      console.error("Buffer conversion error:", bufferError);
+    } catch (bufferError: unknown) {
+      logger.error("Buffer conversion error", bufferError);
+      const errorMessage = bufferError instanceof Error ? bufferError.message : "Unknown error";
       return NextResponse.json(
-        { error: `Failed to convert file to buffer: ${bufferError.message || "Unknown error"}` },
+        { error: `Failed to convert file to buffer: ${errorMessage}` },
         { status: 400 }
       );
     }
     
     // Create Image object for upload (with buffer instead of blob for Drive API)
-    const image = {
+    // Note: Image.data is Blob, but for upload we use Buffer - cast for compatibility
+    const image: Image = {
       id: imageId,
       sessionId,
-      data: buffer, // Pass buffer directly for Drive upload
+      data: buffer as unknown as Blob, // Cast buffer to Blob for type compatibility
       contentType,
       timestamp: Date.now(),
       createdAt: Date.now(),
     };
     
     // Upload to Drive
-    const driveFileId = await uploadImageToDrive(req as any, image as any);
+    const driveFileId = await uploadImageToDrive(req as Request, image);
     
     if (!driveFileId) {
       throw new Error("Failed to upload image to Drive");
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json({ success: true, driveFileId });
   } catch (error) {
-    console.error("Error uploading image:", error);
+    logger.error("Error uploading image", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to upload image" },
       { status: 500 }

@@ -1,50 +1,34 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { OAuth2Client } from "google-auth-library";
+import { logger } from "@/shared/utils/logger";
+import { env } from "@/shared/config/env";
 
-// Get environment variables - required for production
-// Log for debugging (only in development or when explicitly enabled)
-const isDebugMode = process.env.NODE_ENV === "development" || process.env.NEXTAUTH_DEBUG === "true";
-
-if (isDebugMode) {
-  console.log("NextAuth Environment Variables Check:");
-  console.log("NEXTAUTH_SECRET:", process.env.NEXTAUTH_SECRET ? "✅ Set" : "❌ Missing");
-  console.log("GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? `✅ Set (${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...)` : "❌ Missing");
-  console.log("GOOGLE_CLIENT_SECRET:", process.env.GOOGLE_CLIENT_SECRET ? "✅ Set" : "❌ Missing");
-  console.log("NEXTAUTH_URL:", process.env.NEXTAUTH_URL || "Not set");
-}
-
-// NextAuth requires secret - fail early if missing
-if (!process.env.NEXTAUTH_SECRET) {
-  const error = new Error(
-    "NEXTAUTH_SECRET is required but was not found. " +
-    "Please set NEXTAUTH_SECRET in your environment variables. " +
-    "Available env vars: " + Object.keys(process.env).filter(k => k.includes("AUTH") || k.includes("GOOGLE")).join(", ")
-  );
-  console.error(error);
-  throw error;
-}
-
-// Validate Google OAuth credentials
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-  const error = new Error(
-    "Google OAuth credentials are required. " +
-    `GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID ? "Set" : "Missing"}, ` +
-    `GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? "Set" : "Missing"}`
-  );
-  console.error(error);
-  throw error;
+// Validate environment on module load (server-side only)
+if (typeof window === "undefined") {
+  try {
+    if (env.isDebugMode) {
+      logger.debug("NextAuth Environment Variables Check", {
+        hasSecret: !!env.NEXTAUTH_SECRET,
+        hasClientId: !!env.GOOGLE_CLIENT_ID,
+        hasClientSecret: !!env.GOOGLE_CLIENT_SECRET,
+        nextAuthUrl: env.NEXTAUTH_URL || "Not set",
+      });
+    }
+  } catch (error) {
+    logger.error("Environment validation error", error);
+  }
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: env.NEXTAUTH_SECRET,
   trustHost: true, // Required for Amplify
-  debug: isDebugMode,
+  debug: env.isDebugMode,
   // Don't override cookie config - let NextAuth v5 handle it automatically
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
           scope: "openid email profile https://www.googleapis.com/auth/drive.appdata",
@@ -73,8 +57,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.refreshToken) {
         try {
           const oauth2Client = new OAuth2Client(
-            process.env.GOOGLE_CLIENT_ID!,
-            process.env.GOOGLE_CLIENT_SECRET!
+            env.GOOGLE_CLIENT_ID!,
+            env.GOOGLE_CLIENT_SECRET!
           );
           
           oauth2Client.setCredentials({
@@ -92,7 +76,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           }
         } catch (error) {
-          console.error("Error refreshing token:", error);
+          logger.error("Error refreshing token", error);
           // Token refresh failed, clear tokens to force re-login
           token.accessToken = null;
           token.refreshToken = null;
@@ -102,8 +86,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token) {
-        (session as any).accessToken = token.accessToken;
+      if (session.user && token && token.accessToken) {
+        // Extend session type with accessToken
+        (session as typeof session & { accessToken?: string }).accessToken = token.accessToken as string;
       }
       return session;
     },

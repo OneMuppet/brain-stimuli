@@ -1,6 +1,8 @@
-import { getDB, type SyncMetadata } from "./db";
+import { getDB } from "@/infrastructure/database/IndexedDBClient";
+import type { SyncMetadata } from "@/domain/entities";
+import { CONSTANTS } from "@/shared/config/constants";
 
-const SYNC_METADATA_ID = "sync_metadata";
+const SYNC_METADATA_ID = CONSTANTS.SYNC_METADATA_ID;
 
 export async function getSyncMetadata(): Promise<SyncMetadata | null> {
   const db = await getDB();

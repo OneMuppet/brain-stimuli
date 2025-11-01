@@ -1,214 +1,189 @@
-# Brain Stimuli Console
+# 🧠 Brain Stimuli
 
-A high-focus note-taking application with gamification, cloud sync, and a futuristic UI aesthetic.
+**Secure neural interface for capturing, organizing, and syncing your thoughts across devices.**
 
-## Features
+---
 
-- 🎮 Gamified note-taking with XP, levels, and combo streaks
-- ☁️ Secure Google Drive sync across devices
-- 🎨 High-tech Web3 AI console aesthetic
-- 📝 Rich text editing with Tiptap (tables, formatting, etc.)
-- 📸 Screenshot capture and management
-- 🔒 Server-side authentication with NextAuth.js
-- 💾 Offline-first with IndexedDB
+## ✨ What It Does
 
-## Quick Start
+A **gamified note-taking app** with:
+- 📝 Rich text notes with images
+- 🎮 XP, levels, and achievements  
+- ☁️ **Syncs across devices** via Google Drive
+- 🎨 High-tech sci-fi terminal UI
 
-### Prerequisites
+---
 
-- Node.js 18+
-- A Google Cloud project with OAuth credentials
+## 🏗️ How It Works
 
-### 1. Install Dependencies
+### Architecture Flow
 
-```bash
-npm install
 ```
-
-### 2. Set Up Google OAuth
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable the following APIs:
-   - Google Drive API
-   - Google People API
-4. Create OAuth 2.0 credentials:
-   - Application type: **Web application**
-   - Authorized JavaScript origins: `http://localhost:3000`
-   - Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google`
-   - Required scopes:
-     - `openid`
-     - `email`
-     - `profile`
-     - `https://www.googleapis.com/auth/drive.appdata`
-
-### 3. Configure Environment Variables
-
-Create a `.env.local` file in the root directory:
-
-```bash
-# Copy from .env.example
-cp .env.example .env.local
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   React UI   │  →   │   Services   │  →   │  Repositories│
+│  Components  │      │ (Business)   │      │   (Data)     │
+└──────────────┘      └──────────────┘      └──────────────┘
+                                                        │
+                                                        ▼
+                                                ┌──────────────┐
+                                                │  IndexedDB   │
+                                                │   (Local)    │
+                                                └──────────────┘
+                                                        │
+                                                        ▼
+                                                ┌──────────────┐
+                                                │  Sync Service│
+                                                └──────────────┘
+                                                        │
+                                                        ▼
+                                                ┌──────────────┐
+                                                │ Google Drive │
+                                                │   (Cloud)    │
+                                                └──────────────┘
 ```
-
-Then edit `.env.local` with your values:
-
-```env
-GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="your-client-secret"
-NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
-NEXTAUTH_URL="http://localhost:3000"
-```
-
-Generate `NEXTAUTH_SECRET`:
-```bash
-openssl rand -base64 32
-```
-
-### 4. Run Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Deployment to AWS Amplify
-
-### Prerequisites
-
-- GitHub/GitLab/Bitbucket repository
-- AWS account
-
-### Steps
-
-1. **Push to Git Repository**
-   ```bash
-   git add .
-   git commit -m "Initial deployment"
-   git push origin main
-   ```
-
-2. **Connect to AWS Amplify**
-   - Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
-   - Click "New app" → "Host web app"
-   - Connect your Git repository
-
-3. **Configure Build Settings**
-   - Amplify will auto-detect `amplify.yml`
-   - Confirm the build settings
-
-4. **Add Environment Variables**
-   In Amplify Console → Environment variables, add:
-   - `GOOGLE_CLIENT_ID`
-   - `GOOGLE_CLIENT_SECRET`
-   - `NEXTAUTH_SECRET`
-   - `NEXTAUTH_URL` (your Amplify domain, e.g., `https://main.d123.amplifyapp.com`)
-
-5. **Update Google OAuth Redirect URIs**
-   - Go back to Google Cloud Console
-   - Add your Amplify domain to authorized redirect URIs:
-     - `https://your-amplify-domain.com/api/auth/callback/google`
-
-6. **Deploy**
-   - Amplify will automatically build and deploy
-   - Subsequent pushes to `main` will auto-deploy
-
-## Architecture
-
-### Frontend
-- **Next.js 16** - React framework with SSR/SSG
-- **Framer Motion** - Animations
-- **Tiptap** - Rich text editor
-- **IndexedDB** - Local storage (via idb)
-- **Tailwind CSS** - Styling
-
-### Authentication
-- **NextAuth.js v5** - Secure OAuth flow
-- **HTTP-only cookies** - Token storage (server-side)
-- **Google OAuth 2.0** - Identity provider
-
-### Cloud Sync
-- **Google Drive API** - Cloud storage (appDataFolder)
-- **Next.js API Routes** - Server-side sync logic
-- **Periodic sync** - Auto-sync every 60 seconds when authenticated
 
 ### Data Flow
 
 ```
-Client (IndexedDB) → API Routes → Google Drive
-                   ↓
-              NextAuth.js
-                   ↓
-           Google OAuth 2.0
+User Action
+    │
+    ├─→ Component (UI)
+    │       │
+    │       └─→ Service (Business Logic)
+    │               │
+    │               └─→ Repository (Data Access)
+    │                       │
+    │                       └─→ IndexedDB (Local Storage)
+    │                               │
+    │                               └─→ Pending Changes Queue
+    │                                       │
+    │                                       └─→ Sync Service
+    │                                               │
+    │                                               └─→ API Routes
+    │                                                       │
+    │                                                       └─→ Google Drive API
+    │                                                               │
+    │                                                               └─→ Cloud Storage
 ```
 
-## Security
+---
 
-- All authentication tokens are stored server-side in HTTP-only cookies
-- Google Client Secret is never exposed to the browser
-- API routes validate authentication before Google Drive access
-- Sync data is stored in Google Drive's `appDataFolder` (app-specific, user-isolated)
-- Next.js API routes run as AWS Lambda functions (isolated, stateless)
+## 🚀 Getting Started
 
-## Development
+### Prerequisites
 
-### Project Structure
+- Node.js 20+
+- Google OAuth credentials
 
-```
-brain-stimuli/
-├── src/
-│   ├── app/              # Next.js pages & API routes
-│   ├── components/       # React components
-│   ├── lib/             # Core logic (db, auth, scoring)
-│   └── hooks/           # Custom React hooks
-├── public/              # Static assets
-├── amplify.yml          # AWS Amplify config
-├── next.config.ts       # Next.js config
-└── tsconfig.json        # TypeScript config
-```
-
-### Key Files
-
-- `src/lib/auth.ts` - NextAuth.js configuration
-- `src/lib/googleDrive.ts` - Google Drive API helpers (server-side)
-- `src/lib/db.ts` - IndexedDB operations
-- `src/hooks/useSync.ts` - Cloud sync hook
-- `src/app/api/sync/route.ts` - Sync API endpoint
-
-### Scripts
+### Quick Start
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run Biome linter
-npm run lint:fix     # Fix linting issues
-npm run format       # Format code
-npm run typecheck    # TypeScript type checking
+# Install
+npm install
+
+# Configure
+cp .env.example .env.local
+# Edit .env.local with your Google OAuth credentials
+
+# Run
+npm run dev
 ```
 
-## Troubleshooting
+### Environment Variables
 
-### "No access token" error
-- Ensure you're signed in with Google
-- Check that `GOOGLE_CLIENT_SECRET` is set correctly
-- Verify OAuth scopes include `drive.appdata`
+```env
+NEXTAUTH_SECRET=your-secret-here
+GOOGLE_CLIENT_ID=your-client-id  
+GOOGLE_CLIENT_SECRET=your-client-secret
+NEXTAUTH_URL=http://localhost:3000
+```
 
-### Sync not working
-- Open browser console and check for errors
-- Verify Google Drive API is enabled in Google Cloud
-- Check that NextAuth.js session is active (look for cookies)
+Generate secret:
+```bash
+openssl rand -base64 32
+```
 
-### Build fails on Amplify
-- Ensure all environment variables are set in Amplify Console
-- Check build logs for specific errors
-- Verify `amplify.yml` is in the repository root
+---
 
-## License
+## 🧪 Testing
 
-MIT
+```bash
+# Run tests
+npm test
 
-## Contributing
+# Watch mode
+npm run test:watch
 
-This is a personal project, but feel free to fork and adapt for your own use!
+# UI mode
+npm run test:ui
+
+# Type check
+npm run typecheck
+```
+
+---
+
+## 🚢 Deployment
+
+### AWS Amplify
+
+1. **Connect Repository** → AWS Amplify Console
+2. **Configure Build** → Auto-detects `amplify.yml`
+3. **Add Environment Variables**:
+   ```
+   NEXTAUTH_SECRET
+   GOOGLE_CLIENT_ID
+   GOOGLE_CLIENT_SECRET
+   NEXTAUTH_URL (your Amplify domain)
+   ```
+4. **Deploy** → Auto-deploys on push to `main`
+
+### Manual Build
+
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── domain/          # Business entities & interfaces
+├── application/     # Services (orchestration)
+├── infrastructure/  # Repositories (IndexedDB)
+├── presentation/    # React components
+└── shared/          # Utilities, config, errors
+```
+
+---
+
+## 🔄 Sync Mechanism
+
+1. **Local Changes** → Saved to IndexedDB
+2. **Pending Queue** → Tracks changes to sync
+3. **Sync Service** → Generates delta (changes only)
+4. **API Routes** → Upload to Google Drive
+5. **Cloud Retrieval** → Download remote changes
+6. **Merge Strategy** → Last-write-wins
+
+---
+
+## 🛠️ Development
+
+```bash
+npm run dev          # Development server
+npm run build        # Production build
+npm run lint         # Lint code
+npm run format       # Format code
+npm run typecheck    # Type check
+npm run check        # Lint + format + check
+```
+
+---
+
+## 📄 License
+
+Private project

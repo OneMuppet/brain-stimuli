@@ -1,11 +1,12 @@
-import { getDB, type PendingChange } from "./db";
+import { getDB } from "@/infrastructure/database/IndexedDBClient";
+import type { PendingChange, EntityType, OperationType } from "@/domain/entities";
 import { markLocalChange } from "./syncMetadata";
 
 export async function addPendingChange(
-  entityType: "session" | "note" | "image",
+  entityType: EntityType,
   entityId: string,
-  operation: "create" | "update" | "delete",
-  data?: any
+  operation: OperationType,
+  data?: unknown
 ): Promise<void> {
   const db = await getDB();
   

@@ -2,11 +2,12 @@
 // and resets lastSyncTimestamp to force a full sync
 import { getDB } from "./db";
 import { updateSyncMetadata } from "./syncMetadata";
+import { logger } from "@/shared/utils/logger";
 
 export async function resetSyncState() {
   const db = await getDB();
   
-  console.log("🔄 Resetting sync state...");
+  logger.info("Resetting sync state");
   
   // Clear syncTimestamp from all sessions
   const sessions = await db.getAll("sessions");
@@ -20,7 +21,7 @@ export async function resetSyncState() {
       sessionsCleared++;
     }
   }
-  console.log(`✅ Cleared syncTimestamp from ${sessionsCleared}/${sessions.length} sessions`);
+  logger.debug(`Cleared syncTimestamp from ${sessionsCleared}/${sessions.length} sessions`);
   
   // Clear syncTimestamp from all notes
   const notes = await db.getAll("notes");
@@ -34,7 +35,7 @@ export async function resetSyncState() {
       notesCleared++;
     }
   }
-  console.log(`✅ Cleared syncTimestamp from ${notesCleared}/${notes.length} notes`);
+  logger.debug(`Cleared syncTimestamp from ${notesCleared}/${notes.length} notes`);
   
   // Clear syncTimestamp from all images
   const images = await db.getAll("images");
@@ -48,7 +49,7 @@ export async function resetSyncState() {
       imagesCleared++;
     }
   }
-  console.log(`✅ Cleared syncTimestamp from ${imagesCleared}/${images.length} images`);
+  logger.debug(`Cleared syncTimestamp from ${imagesCleared}/${images.length} images`);
   
   // Reset sync metadata to force full sync
   await updateSyncMetadata({
@@ -57,8 +58,6 @@ export async function resetSyncState() {
     lastCloudTimestamp: 0,
     syncVersion: 0,
   });
-  console.log("✅ Reset sync metadata (lastSyncTimestamp = 0)");
-  
-  console.log("✅ Sync state reset complete! Next sync will be a full sync.");
+  logger.info("Reset sync metadata (lastSyncTimestamp = 0)");
 }
 

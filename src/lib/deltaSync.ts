@@ -1,29 +1,11 @@
 import * as db from "./db";
 import { getDB } from "./db";
-import type { Session, Note, Image } from "./db";
+import type { Session, Note, Image } from "@/domain/entities";
+import type { SyncDelta } from "@/domain/types/SyncDelta";
 import { getSyncMetadata } from "./syncMetadata";
 
-export interface SyncDelta {
-  sessions: {
-    created: Session[];
-    updated: Session[];
-    deleted: string[]; // IDs
-  };
-  notes: {
-    created: Note[];
-    updated: Note[];
-    deleted: string[]; // IDs
-  };
-  images: {
-    created: Array<{ id: string; sessionId: string; contentType: string; createdAt: number; driveFileId?: string }>;
-    updated: Array<{ id: string; sessionId: string; contentType: string; createdAt: number; driveFileId?: string }>;
-    deleted: string[]; // IDs
-  };
-  metadata: {
-    lastLocalChangeTimestamp: number;
-    syncVersion: number;
-  };
-}
+// Re-export SyncDelta for backward compatibility
+export type { SyncDelta } from "@/domain/types/SyncDelta";
 
 export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDelta> {
   const sessions = await db.listSessions();
@@ -43,36 +25,6 @@ export async function generateLocalDelta(sinceTimestamp: number): Promise<SyncDe
   // Check if this is a full sync (sinceTimestamp === 0)
   // An item is "synced" if it has syncTimestamp set and syncTimestamp > 0
   const isFirstSync = sinceTimestamp === 0;
-  
-  console.log("🔍 generateLocalDelta:", {
-    sinceTimestamp,
-    isFirstSync,
-    totalSessions: sessions.length,
-    totalNotes: allNotes.length,
-    totalImages: allImages.length,
-    sessionsWithSyncTimestamp: sessions.filter(s => s.syncTimestamp && s.syncTimestamp > 0).length,
-    notesWithSyncTimestamp: allNotes.filter(n => n.syncTimestamp && n.syncTimestamp > 0).length,
-    imagesWithSyncTimestamp: allImages.filter(img => img.syncTimestamp && img.syncTimestamp > 0).length,
-    createdSessions: sessions.filter(s => {
-      const hasBeenSynced = s.syncTimestamp && s.syncTimestamp > 0;
-      if (isFirstSync) return !hasBeenSynced;
-      if (!hasBeenSynced) return true;
-      return s.createdAt > sinceTimestamp && s.createdAt === s.lastModified;
-    }).length,
-    createdNotes: allNotes.filter(n => {
-      const hasBeenSynced = n.syncTimestamp && n.syncTimestamp > 0;
-      if (isFirstSync) return !hasBeenSynced;
-      if (!hasBeenSynced) return true;
-      return n.createdAt > sinceTimestamp && n.createdAt === n.lastModified;
-    }).length,
-    createdImages: allImages.filter(img => {
-      const hasBeenSynced = img.syncTimestamp && img.syncTimestamp > 0;
-      if (isFirstSync) return !hasBeenSynced;
-      if (!hasBeenSynced) return true;
-      const createdAt = img.createdAt || img.timestamp;
-      return createdAt > sinceTimestamp;
-    }).length,
-  });
   
   // Filter logic:
   // - If first sync (sinceTimestamp === 0): include ALL items that haven't been synced
@@ -189,11 +141,7 @@ export async function applyCloudDelta(
 ): Promise<{ conflicts: string[] }> {
   const conflicts: string[] = [];
   
-  console.log("🔄 applyCloudDelta:", {
-    sessionsToApply: cloudDelta.sessions.created.length + cloudDelta.sessions.updated.length,
-    notesToApply: cloudDelta.notes.created.length + cloudDelta.notes.updated.length,
-    imagesToApply: cloudDelta.images.created.length + cloudDelta.images.updated.length,
-  });
+  // Removed verbose console.log - use logger if needed for debugging
   
   // Merge sessions
   let sessionsRestored = 0;
@@ -231,7 +179,7 @@ export async function applyCloudDelta(
       }
     }
   }
-  console.log(`  Sessions: ${sessionsRestored} restored, ${sessionsUpdated} updated`);
+  // Removed verbose console.log - use logger if needed for debugging
   
   // Merge notes
   let notesRestored = 0;
@@ -260,7 +208,7 @@ export async function applyCloudDelta(
       }
     }
   }
-  console.log(`  Notes: ${notesRestored} restored, ${notesUpdated} updated`);
+  // Removed verbose console.log - use logger if needed for debugging
   
   // Handle deletions
   for (const sessionId of cloudDelta.sessions.deleted) {
@@ -290,11 +238,9 @@ export async function applyCloudDelta(
     if (!existing) {
       // Image metadata exists in cloud but not local - needs blob restoration via API
       if (imageMeta.driveFileId) {
-        console.log(`📥 Image ${imageMeta.id} needs restoration from Drive (driveFileId: ${imageMeta.driveFileId})`);
         imagesNeedingRestoration++;
-      } else {
-        console.warn(`⚠️ Image ${imageMeta.id} has no driveFileId, cannot restore`);
       }
+      // Removed verbose console.log - use logger if needed for debugging
     } else {
       // Update local metadata with cloud info (driveFileId, etc.)
       await db.updateImage(imageMeta.id, {
@@ -304,9 +250,7 @@ export async function applyCloudDelta(
       imagesUpdated++;
     }
   }
-  if (imagesNeedingRestoration > 0 || imagesUpdated > 0) {
-    console.log(`  Images: ${imagesNeedingRestoration} need restoration, ${imagesUpdated} updated`);
-  }
+  // Removed verbose console.log - use logger if needed for debugging
   
   return { conflicts };
 }

@@ -9,9 +9,9 @@ export const CustomImage = Image.extend({
         default: null,
         parseHTML: element => element.getAttribute('data-image-id'),
         renderHTML: attributes => {
-          const attrs: Record<string, any> = {};
+          const attrs: Record<string, string> = {};
           if (attributes['data-image-id']) {
-            attrs['data-image-id'] = attributes['data-image-id'];
+            attrs['data-image-id'] = String(attributes['data-image-id']);
           }
           return attrs;
         },

@@ -118,10 +118,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
         insertImage: (imageId: string, imageUrl: string) => {
             if (editor) {
                 // Insert image with both src and data-image-id
+                // Type assertion needed because Tiptap's SetImageOptions doesn't officially support data-image-id
+                // Our custom extension adds this attribute support
                 editor.chain().focus().setImage({ 
                     src: imageUrl,
                     'data-image-id': imageId,
-                } as any).run();
+                } as Parameters<NonNullable<ReturnType<typeof editor.chain>>['setImage']>[0]).run();
             }
         },
     }), [editor]);

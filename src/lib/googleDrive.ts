@@ -1,44 +1,39 @@
 import { google } from "googleapis";
 import { getToken } from "next-auth/jwt";
 import { OAuth2Client } from "google-auth-library";
+import { logger } from "@/shared/utils/logger";
+import { CONSTANTS } from "@/shared/config/constants";
+import { env } from "@/shared/config/env";
 
-const FILE_NAME = "brain-stimuli-data.json";
+const FILE_NAME = CONSTANTS.DRIVE_FILE_NAME;
 
 export async function getDriveClient(req: Request) {
   try {
-    console.log("🔐 getDriveClient: Checking authentication...");
-    console.log("🔐 getDriveClient: Cookie header:", req.headers.get("cookie")?.substring(0, 200) || "none");
+    logger.debug("getDriveClient: Checking authentication");
     
     // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
     // In production, it's __Secure-authjs.session-token
-    const cookieName = process.env.NODE_ENV === "production" 
+    const cookieName = env.isProduction
       ? "__Secure-authjs.session-token" 
       : "authjs.session-token";
     
-    console.log("🔐 getDriveClient: Cookie name:", cookieName);
-    
     // Get token - explicitly tell getToken which cookie to read
+
     const token = await getToken({ 
       req, 
-      secret: process.env.NEXTAUTH_SECRET!,
+      secret: env.NEXTAUTH_SECRET!,
       cookieName, // Explicitly tell getToken which cookie to read
     });
     
-    console.log("🔐 getDriveClient: Token check:", {
-      hasToken: !!token,
-      hasAccessToken: !!token?.accessToken,
-      tokenKeys: token ? Object.keys(token).join(", ") : "none",
-    });
-    
     if (!token?.accessToken) {
-      console.error("❌ getDriveClient: No access token!");
+      logger.error("getDriveClient: No access token");
       throw new Error("No access token - user not authenticated. Please sign out and sign in again to refresh your authentication.");
     }
 
     // Use google-auth-library OAuth2Client for better token handling
     const oauth2Client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID!,
-      process.env.GOOGLE_CLIENT_SECRET!
+      env.GOOGLE_CLIENT_ID!,
+      env.GOOGLE_CLIENT_SECRET!
     );
     
     oauth2Client.setCredentials({
@@ -58,19 +53,21 @@ export async function getDriveClient(req: Request) {
           });
         }
       } catch (refreshError) {
-        console.error("Error refreshing token in getDriveClient:", refreshError);
+        logger.error("Error refreshing token in getDriveClient", refreshError);
         // Continue with existing token, might still work
       }
     }
     
     return google.drive({ version: "v3", auth: oauth2Client });
   } catch (error) {
-    console.error("Error getting Drive client:", error);
+    logger.error("Error getting Drive client", error);
     throw error;
   }
 }
 
-export async function syncToDrive(req: Request, data: any) {
+import type { SyncDelta } from "@/domain/types/SyncDelta";
+
+export async function syncToDrive(req: Request, data: SyncDelta) {
   const drive = await getDriveClient(req);
   
   // Find existing file
@@ -84,16 +81,15 @@ export async function syncToDrive(req: Request, data: any) {
   const content = JSON.stringify(data);
   
   // Log what we're saving
-  const sessionsCount = (data?.sessions?.created?.length || 0) + (data?.sessions?.updated?.length || 0);
-  const notesCount = (data?.notes?.created?.length || 0) + (data?.notes?.updated?.length || 0);
-  const imagesCount = data?.images?.created?.length || 0;
-  console.log("💾 Saving to Google Drive:", {
+  const sessionsCount = (data.sessions?.created?.length || 0) + (data.sessions?.updated?.length || 0);
+  const notesCount = (data.notes?.created?.length || 0) + (data.notes?.updated?.length || 0);
+  const imagesCount = data.images?.created?.length || 0;
+  logger.debug("Saving to Google Drive", {
     fileId: fileId || "NEW FILE",
     sessionsCount,
     notesCount,
     imagesCount,
     contentSize: content.length,
-    preview: content.substring(0, 200) + "...",
   });
 
   if (fileId) {
@@ -102,7 +98,7 @@ export async function syncToDrive(req: Request, data: any) {
       fileId,
       media: { mimeType: "application/json", body: content },
     });
-    console.log("✅ Updated Google Drive file:", fileId);
+    logger.debug("Updated Google Drive file", fileId);
     return result;
   } else {
     // Create
@@ -110,7 +106,7 @@ export async function syncToDrive(req: Request, data: any) {
       requestBody: { name: FILE_NAME, parents: ["appDataFolder"] },
       media: { mimeType: "application/json", body: content },
     });
-    console.log("✅ Created Google Drive file:", result.data.id);
+    logger.debug("Created Google Drive file", result.data.id);
     return result;
   }
 }
@@ -126,13 +122,13 @@ export async function syncFromDrive(req: Request) {
     });
 
     const fileId = list.data.files?.[0]?.id;
-    console.log("📥 Checking Google Drive:", {
+    logger.debug("Checking Google Drive", {
       fileId: fileId || "NO FILE FOUND",
       filesListed: list.data.files?.length || 0,
     });
     
     if (!fileId) {
-      console.log("⚠️ No file found in Google Drive appDataFolder");
+      logger.debug("No file found in Google Drive appDataFolder");
       return null;
     }
 
@@ -148,42 +144,31 @@ export async function syncFromDrive(req: Request) {
       const text = buffer.toString('utf-8');
       
       if (!text || text.trim().length === 0) {
-        console.log("⚠️ Drive file is empty");
+        logger.debug("Drive file is empty");
         return null;
       }
       
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(text) as SyncDelta;
       
       // Log what we retrieved
-      const sessionsCount = (parsed?.sessions?.created?.length || 0) + (parsed?.sessions?.updated?.length || 0);
-      const notesCount = (parsed?.notes?.created?.length || 0) + (parsed?.notes?.updated?.length || 0);
-      const imagesCount = parsed?.images?.created?.length || 0;
-      console.log("📦 Retrieved from Google Drive:", {
+      const sessionsCount = (parsed.sessions?.created?.length || 0) + (parsed.sessions?.updated?.length || 0);
+      const notesCount = (parsed.notes?.created?.length || 0) + (parsed.notes?.updated?.length || 0);
+      const imagesCount = parsed.images?.created?.length || 0;
+      logger.debug("Retrieved from Google Drive", {
         fileId,
         contentSize: text.length,
         sessionsCount,
         notesCount,
         imagesCount,
-        preview: text.substring(0, 200) + "...",
       });
       
       return parsed;
     } catch (parseError) {
-      console.error("❌ Error parsing Drive data:", parseError);
-      // Try to see what we got
-      if (response.data) {
-        try {
-          const buffer = Buffer.from(response.data as ArrayBuffer);
-          const preview = buffer.toString('utf-8').substring(0, 200);
-          console.error("Raw data preview:", preview);
-        } catch {
-          // Ignore
-        }
-      }
+      logger.error("Error parsing Drive data", parseError);
       return null;
     }
   } catch (error) {
-    console.error("❌ Error syncing from Drive:", error);
+    logger.error("Error syncing from Drive", error);
     // Return null instead of throwing so the API can handle empty state
     return null;
   }

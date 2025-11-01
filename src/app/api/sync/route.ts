@@ -3,6 +3,9 @@ import { syncToDrive, syncFromDrive } from "@/lib/googleDrive";
 import { uploadImageToDrive } from "@/lib/imageSync";
 import { getImage } from "@/lib/db";
 import type { SyncDelta } from "@/lib/deltaSync";
+import { logger } from "@/shared/utils/logger";
+import type { Session, Note } from "@/domain/entities";
+import { env } from "@/shared/config/env";
 
 interface SyncRequest {
   delta?: SyncDelta;
@@ -13,7 +16,7 @@ interface SyncRequest {
 interface SyncResponse {
   success: boolean;
   delta?: SyncDelta;
-  data?: any; // Full data (for initial sync)
+  data?: SyncDelta; // Full data (for initial sync)
   syncTimestamp: number;
   conflicts?: string[];
 }
@@ -25,42 +28,27 @@ export async function POST(req: NextRequest) {
     
     // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
     // In production, it's __Secure-authjs.session-token
-    const cookieName = process.env.NODE_ENV === "production" 
+    const cookieName = env.isProduction
       ? "__Secure-authjs.session-token" 
       : "authjs.session-token";
     
-    console.log("🔐 POST /api/sync - Request check:", {
-      hasCookieHeader: !!req.headers.get("cookie"),
-      cookieHeaderLength: req.headers.get("cookie")?.length || 0,
-      cookieName,
-    });
-    
     const token = await getToken({ 
       req, 
-      secret: process.env.NEXTAUTH_SECRET!,
+      secret: env.NEXTAUTH_SECRET!,
       cookieName, // Explicitly tell getToken which cookie to read
     });
     
-    console.log("🔐 POST /api/sync - Auth check:", {
-      hasToken: !!token,
-      hasAccessToken: !!token?.accessToken,
-      tokenExpiresAt: token?.expiresAt,
-      userEmail: token?.email || "none",
-      tokenKeys: token ? Object.keys(token).join(", ") : "none",
-    });
-    
     if (!token?.accessToken) {
-      console.error("❌ POST /api/sync - Not authenticated!");
-      console.error("🔐 POST /api/sync - Token object:", token);
+      logger.error("POST /api/sync - Not authenticated");
       return NextResponse.json(
-        { error: "Not authenticated. Please sign in.", debug: { hasToken: !!token, tokenKeys: token ? Object.keys(token) : [] } },
+        { error: "Not authenticated. Please sign in." },
         { status: 401 }
       );
     }
     
     const body: SyncRequest = await req.json();
     
-    console.log("📤 POST /api/sync - Receiving local delta:", {
+    logger.debug("POST /api/sync - Receiving local delta", {
       hasDelta: !!body.delta,
       sessions: (body.delta?.sessions?.created?.length || 0) + (body.delta?.sessions?.updated?.length || 0),
       notes: (body.delta?.notes?.created?.length || 0) + (body.delta?.notes?.updated?.length || 0),
@@ -69,7 +57,7 @@ export async function POST(req: NextRequest) {
     
     // Get current cloud state
     let cloudData = await syncFromDrive(req);
-    console.log("📥 POST /api/sync - Current cloud state:", {
+    logger.debug("POST /api/sync - Current cloud state", {
       exists: !!cloudData,
       sessions: (cloudData?.sessions?.created?.length || 0) + (cloudData?.sessions?.updated?.length || 0),
       notes: (cloudData?.notes?.created?.length || 0) + (cloudData?.notes?.updated?.length || 0),
@@ -181,10 +169,10 @@ export async function POST(req: NextRequest) {
       const imagesToUpload = [
         ...body.delta.images.created,
         ...body.delta.images.updated,
-      ].filter((img: any) => !img.driveFileId); // Only upload if not already uploaded
+      ].filter((img) => !img.driveFileId); // Only upload if not already uploaded
       
       if (imagesToUpload.length > 0) {
-        console.log(`📤 Uploading ${imagesToUpload.length} image blobs to Drive...`);
+        logger.debug(`Uploading ${imagesToUpload.length} image blobs to Drive`);
         // Note: We need image blobs from the client to upload them
         // For now, images will be uploaded on next sync when client detects they're missing driveFileId
         // This is a limitation - we sync metadata first, then upload blobs separately
@@ -192,7 +180,7 @@ export async function POST(req: NextRequest) {
     }
     
         // Upload merged state to Drive
-        console.log("💾 POST /api/sync - Uploading merged state to Drive:", {
+        logger.debug("POST /api/sync - Uploading merged state to Drive", {
           sessions: (cloudData?.sessions?.created?.length || 0) + (cloudData?.sessions?.updated?.length || 0),
           notes: (cloudData?.notes?.created?.length || 0) + (cloudData?.notes?.updated?.length || 0),
           images: cloudData?.images?.created?.length || 0,
@@ -201,15 +189,13 @@ export async function POST(req: NextRequest) {
         
         const syncTimestamp = Date.now();
         
-        console.log("✅ POST /api/sync - Upload complete");
-        
         return NextResponse.json({
           success: true,
           syncTimestamp,
           conflicts: [], // Conflicts resolved server-side using last-write-wins
         } satisfies SyncResponse);
   } catch (error) {
-    console.error("Sync POST error:", error);
+    logger.error("Sync POST error", error);
     const errorMessage = error instanceof Error ? error.message : "Sync failed";
     return NextResponse.json(
       { error: errorMessage, details: String(error) },
@@ -224,41 +210,22 @@ export async function GET(req: NextRequest) {
     const { auth } = await import("@/lib/auth");
     const session = await auth();
     
-    console.log("🔐 GET /api/sync - Auth check (using auth()):", {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userEmail: session?.user?.email || "none",
-    });
-    
     // Get token for Drive access (still need JWT for accessToken)
     // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
     // In production, it's __Secure-authjs.session-token
     const { getToken } = await import("next-auth/jwt");
-    const cookieName = process.env.NODE_ENV === "production" 
+    const cookieName = env.isProduction
       ? "__Secure-authjs.session-token" 
       : "authjs.session-token";
     
-    console.log("🔐 GET /api/sync - Cookie config:", {
-      cookieName,
-      hasCookieHeader: !!req.headers.get("cookie"),
-    });
-    
     const token = await getToken({ 
       req, 
-      secret: process.env.NEXTAUTH_SECRET!,
+      secret: env.NEXTAUTH_SECRET!,
       cookieName, // Explicitly tell getToken which cookie to read
     });
     
-    console.log("🔐 GET /api/sync - Token check (for Drive access):", {
-      hasToken: !!token,
-      hasAccessToken: !!token?.accessToken,
-      tokenKeys: token ? Object.keys(token).join(", ") : "none",
-    });
-    
     if (!session || !token?.accessToken) {
-      console.error("❌ GET /api/sync - Not authenticated!");
-      console.error("🔐 Session:", session ? "exists" : "missing");
-      console.error("🔐 Token:", token ? "exists but no accessToken" : "missing");
+      logger.error("GET /api/sync - Not authenticated");
       return NextResponse.json(
         { error: "Not authenticated. Please sign in." },
         { status: 401 }
@@ -269,24 +236,22 @@ export async function GET(req: NextRequest) {
     const sinceTimestamp = since ? parseInt(since, 10) : 0;
     const fullSync = req.nextUrl.searchParams.get("full") === "true";
     
-    console.log("📥 GET /api/sync - Request:", {
+    logger.debug("GET /api/sync - Request", {
       since: sinceTimestamp,
       fullSync,
-      sinceParam: since || "none",
     });
     
     let cloudData;
     try {
       cloudData = await syncFromDrive(req);
     } catch (error) {
-      console.error("❌ Error fetching from Drive:", error);
+      logger.error("Error fetching from Drive", error);
       // If no data exists or auth failed, return empty state
       cloudData = null;
     }
     
-    console.log("📦 GET /api/sync - Retrieved data:", {
+    logger.debug("GET /api/sync - Retrieved data", {
       exists: !!cloudData,
-      type: typeof cloudData,
       sessions: cloudData?.sessions?.created?.length || 0,
       notes: cloudData?.notes?.created?.length || 0,
     });
@@ -328,34 +293,36 @@ export async function GET(req: NextRequest) {
     // Otherwise, return delta (changes since timestamp)
     const delta: SyncDelta = {
       sessions: {
-        created: cloudState.sessions.created.filter((s: any) => {
+        created: cloudState.sessions.created.filter((s: Session) => {
           const created = s.createdAt || s.lastModified;
           return created > sinceTimestamp;
         }),
-        updated: cloudState.sessions.updated.filter((s: any) => {
+        updated: cloudState.sessions.updated.filter((s: Session) => {
           const modified = s.lastModified || s.createdAt;
           return modified > sinceTimestamp;
         }),
         deleted: cloudState.sessions.deleted,
       },
       notes: {
-        created: cloudState.notes.created.filter((n: any) => {
+        created: cloudState.notes.created.filter((n: Note) => {
           const created = n.createdAt || n.lastModified;
           return created > sinceTimestamp;
         }),
-        updated: cloudState.notes.updated.filter((n: any) => {
+        updated: cloudState.notes.updated.filter((n: Note) => {
           const modified = n.lastModified || n.createdAt;
           return modified > sinceTimestamp;
         }),
         deleted: cloudState.notes.deleted,
       },
       images: {
-        created: cloudState.images.created.filter((i: any) => {
-          const created = i.createdAt || i.timestamp;
+        created: cloudState.images.created.filter((i) => {
+          const created = i.createdAt || 0;
           return created > sinceTimestamp;
         }),
-        updated: cloudState.images.updated.filter((i: any) => {
-          return i.syncTimestamp && i.syncTimestamp > sinceTimestamp;
+        updated: cloudState.images.updated.filter((i) => {
+          // Image metadata doesn't have syncTimestamp, use createdAt or check for updates
+          const updated = i.createdAt || 0;
+          return updated > sinceTimestamp;
         }),
         deleted: cloudState.images.deleted,
       },
@@ -368,7 +335,7 @@ export async function GET(req: NextRequest) {
       syncTimestamp,
     } satisfies SyncResponse);
   } catch (error) {
-    console.error("Sync GET error:", error);
+    logger.error("Sync GET error", error);
     const errorMessage = error instanceof Error ? error.message : "Sync failed";
     return NextResponse.json(
       { error: errorMessage, details: String(error) },
