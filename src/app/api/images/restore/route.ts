@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { restoreImageFromCloud } from "@/lib/imageSync"; // Server-side only
+import { downloadImageFromDrive } from "@/lib/imageSync";
 
 export async function GET(req: NextRequest) {
   try {
     const imageId = req.nextUrl.searchParams.get("imageId");
     const driveFileId = req.nextUrl.searchParams.get("driveFileId");
+    const contentType = req.nextUrl.searchParams.get("contentType") || "image/png";
     
     if (!imageId || !driveFileId) {
       return NextResponse.json(
@@ -13,46 +14,22 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    // Get image metadata from the sync data to get contentType and sessionId
-    // For now, we'll need to fetch this from the sync data
-    // Let's get it from the cloud sync file
-    const syncResponse = await fetch(`${req.nextUrl.origin}/api/sync?full=true`, {
-      headers: {
-        cookie: req.headers.get("cookie") || "",
-      },
+    // Download blob from Drive
+    const blob = await downloadImageFromDrive(req as any, driveFileId, contentType);
+    
+    // Convert blob to base64 for JSON response
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString("base64");
+    
+    // Return image data for client to store in IndexedDB
+    return NextResponse.json({
+      success: true,
+      imageId,
+      driveFileId,
+      contentType,
+      data: base64, // Base64-encoded image data
     });
-    
-    if (!syncResponse.ok) {
-      throw new Error("Failed to fetch sync data");
-    }
-    
-    const syncData = await syncResponse.json();
-    const allImages = [
-      ...(syncData.data?.images?.created || []),
-      ...(syncData.data?.images?.updated || []),
-      ...(syncData.delta?.images?.created || []),
-      ...(syncData.delta?.images?.updated || []),
-    ];
-    
-    const imageMeta = allImages.find((img: any) => img.id === imageId && img.driveFileId === driveFileId);
-    
-    if (!imageMeta) {
-      return NextResponse.json(
-        { error: "Image metadata not found" },
-        { status: 404 }
-      );
-    }
-    
-    // Restore the image
-    await restoreImageFromCloud(req as any, {
-      id: imageMeta.id,
-      sessionId: imageMeta.sessionId,
-      contentType: imageMeta.contentType || "image/png",
-      driveFileId: imageMeta.driveFileId,
-      createdAt: imageMeta.createdAt || Date.now(),
-    });
-    
-    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error restoring image:", error);
     return NextResponse.json(

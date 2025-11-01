@@ -1,7 +1,7 @@
 // Image blob sync utilities for Google Drive
 import { getDriveClient } from "./googleDrive";
 import type { Image } from "./db";
-import { getDB, updateImage } from "./db";
+import { Readable } from "stream";
 
 /**
  * Upload an image blob to Google Drive appDataFolder
@@ -10,6 +10,23 @@ import { getDB, updateImage } from "./db";
 export async function uploadImageToDrive(req: Request, image: Image): Promise<string> {
   const drive = await getDriveClient(req);
   
+  // Convert image.data to Buffer if it's not already
+  let buffer: Buffer;
+  if (image.data instanceof Buffer) {
+    buffer = image.data;
+  } else if (image.data instanceof Blob) {
+    buffer = Buffer.from(await image.data.arrayBuffer());
+  } else if (image.data instanceof ArrayBuffer) {
+    buffer = Buffer.from(image.data);
+  } else {
+    // Try to convert to ArrayBuffer first
+    buffer = Buffer.from(await (image.data as any).arrayBuffer());
+  }
+  
+  // Convert Buffer to stream for Google Drive API
+  // Drive API expects a stream, not a Buffer
+  const stream = Readable.from(buffer);
+  
   // Check if image already has a driveFileId
   if (image.driveFileId) {
     // Update existing file
@@ -17,10 +34,9 @@ export async function uploadImageToDrive(req: Request, image: Image): Promise<st
       fileId: image.driveFileId,
       media: {
         mimeType: image.contentType,
-        body: Buffer.from(await image.data.arrayBuffer()),
+        body: stream,
       },
     });
-    console.log(`✅ Updated image in Drive: ${image.id} -> ${image.driveFileId}`);
     return image.driveFileId;
   }
   
@@ -32,16 +48,14 @@ export async function uploadImageToDrive(req: Request, image: Image): Promise<st
     },
     media: {
       mimeType: image.contentType,
-      body: Buffer.from(await image.data.arrayBuffer()),
+      body: stream,
     },
   });
   
   const driveFileId = result.data.id;
-  if (driveFileId) {
-    console.log(`✅ Uploaded image to Drive: ${image.id} -> ${driveFileId}`);
-    // Update local image with driveFileId
-    await updateImage(image.id, { driveFileId });
-  }
+  
+  // Note: We don't update IndexedDB here since this runs on the server
+  // The client will update the local database after receiving the driveFileId
   
   return driveFileId || "";
 }
@@ -64,40 +78,4 @@ export async function downloadImageFromDrive(req: Request, driveFileId: string, 
   return blob;
 }
 
-/**
- * Restore an image from cloud: download blob and store in IndexedDB
- */
-export async function restoreImageFromCloud(
-  req: Request,
-  imageMeta: { id: string; sessionId: string; contentType: string; driveFileId?: string; createdAt?: number }
-): Promise<void> {
-  if (!imageMeta.driveFileId) {
-    console.warn(`⚠️ Image ${imageMeta.id} has no driveFileId, cannot restore`);
-    return;
-  }
-  
-  try {
-    // Download blob from Drive
-    const blob = await downloadImageFromDrive(req, imageMeta.driveFileId, imageMeta.contentType);
-    
-    // Store in IndexedDB
-    const db = await getDB();
-    const image: Image = {
-      id: imageMeta.id,
-      sessionId: imageMeta.sessionId,
-      data: blob,
-      contentType: imageMeta.contentType,
-      timestamp: imageMeta.createdAt || Date.now(),
-      createdAt: imageMeta.createdAt,
-      driveFileId: imageMeta.driveFileId,
-      syncTimestamp: Date.now(),
-    };
-    
-    await db.put("images", image);
-    console.log(`✅ Restored image to IndexedDB: ${imageMeta.id}`);
-  } catch (error) {
-    console.error(`❌ Failed to restore image ${imageMeta.id}:`, error);
-    throw error;
-  }
-}
 

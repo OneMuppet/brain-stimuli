@@ -30,19 +30,7 @@ export default function Home() {
   );
   const { isAuthenticated, isOnline, isSyncing, lastSyncTime } = useSync();
 
-  // Show welcome screen if not authenticated
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return <WelcomeScreen />;
-  }
-
+  // All hooks must be called before any conditional returns
   const loadSessions = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
@@ -76,6 +64,19 @@ export default function Home() {
       s.title.toLowerCase().includes(query)
     );
   }, [sessions, searchQuery]);
+
+  // Conditional returns after all hooks
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-white text-xl mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <WelcomeScreen />;
+  }
 
   if (loading) {
     return (

@@ -33,24 +33,12 @@ const XP_PER_NOTE = 5;
 const XP_PER_IMAGE = 10;
 
 export default function SessionDetailPage() {
-  const { data: session: authSession, status } = useSession();
+  const { data: authSession, status } = useSession();
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
 
-  // Show welcome screen if not authenticated
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!authSession) {
-    return <WelcomeScreen />;
-  }
-
+  // All hooks must be called before any conditional returns
   const [session, setSession] = useState<Session | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [images, setImages] = useState<Image[]>([]);
@@ -131,22 +119,6 @@ export default function SessionDetailPage() {
   };
 
 
-  // Auto-clear XP bubble
-  useEffect(() => {
-    if (showXPBubble) {
-      const t = setTimeout(() => setShowXPBubble(null), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [showXPBubble]);
-
-  // Auto-clear power card
-  useEffect(() => {
-    if (showPowerCard) {
-      const t = setTimeout(() => setShowPowerCard(null), 1300);
-      return () => clearTimeout(t);
-    }
-  }, [showPowerCard]);
-
   // Load session data
   const loadSessionData = useCallback(async () => {
     try {
@@ -184,6 +156,22 @@ export default function SessionDetailPage() {
     loadSessionData().catch(() => {});
   }, [loadSessionData]);
 
+  // Auto-clear XP bubble
+  useEffect(() => {
+    if (showXPBubble) {
+      const t = setTimeout(() => setShowXPBubble(null), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [showXPBubble]);
+
+  // Auto-clear power card
+  useEffect(() => {
+    if (showPowerCard) {
+      const t = setTimeout(() => setShowPowerCard(null), 1300);
+      return () => clearTimeout(t);
+    }
+  }, [showPowerCard]);
+
   // Refresh note content when images are restored (e.g., after sync)
   // Track previous image count to detect when new images are restored
   useEffect(() => {
@@ -206,6 +194,19 @@ export default function SessionDetailPage() {
       })().catch(() => {});
     }
   }, [notes, images]);
+
+  // Conditional returns after all hooks
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-white text-xl mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!authSession) {
+    return <WelcomeScreen />;
+  }
 
   if (loading) {
     return (

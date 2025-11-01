@@ -2,8 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
-import * as db from "@/lib/db";
-import { getImage } from "@/lib/db";
+import { getDB, getImage, listSessions, updateImage } from "@/lib/db";
 import { getSyncMetadata, updateSyncMetadata } from "@/lib/syncMetadata";
 import { getPendingChanges, removePendingChange } from "@/lib/pendingChanges";
 import { generateLocalDelta, applyCloudDelta, type SyncDelta } from "@/lib/deltaSync";
@@ -76,7 +75,7 @@ export function useSync() {
       const lastSync = syncMetadata?.lastSyncTimestamp || 0;
       
       // Check if local database is empty - if so, force full sync
-      const localSessions = await db.listSessions();
+      const localSessions = await listSessions();
       const isLocalEmpty = localSessions.length === 0;
       
       // Step 1: Get cloud delta FIRST (or full data if first sync or local is empty)
@@ -139,7 +138,7 @@ export function useSync() {
             ...(fullDelta.images?.updated || []),
           ]) {
             if (imageMeta.driveFileId) {
-              const existing = await db.getImage(imageMeta.id);
+              const existing = await getImage(imageMeta.id);
               if (!existing) {
                 imagesNeedingRestoration.push(imageMeta);
               }
@@ -149,15 +148,38 @@ export function useSync() {
           if (imagesNeedingRestoration.length > 0) {
             const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
               try {
-                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`, {
+                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}&contentType=${encodeURIComponent(imageMeta.contentType || "image/png")}`, {
                   credentials: "include", // Ensure cookies are sent
                 });
                 if (response.ok) {
+                  const result = await response.json();
+                  // Convert base64 back to blob
+                  const binaryString = atob(result.data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  const blob = new Blob([bytes], { type: result.contentType });
+                  
+                  // Store in IndexedDB
+                  const db = await getDB();
+                  const image = {
+                    id: result.imageId,
+                    sessionId: imageMeta.sessionId,
+                    data: blob,
+                    contentType: result.contentType,
+                    timestamp: imageMeta.createdAt || Date.now(),
+                    createdAt: imageMeta.createdAt,
+                    driveFileId: result.driveFileId,
+                    syncTimestamp: Date.now(),
+                  };
+                  await db.put("images", image);
                   return true;
                 } else {
                   return false;
                 }
               } catch (error) {
+                console.error(`❌ Failed to restore image ${imageMeta.id}:`, error);
                 return false;
               }
             });
@@ -176,7 +198,7 @@ export function useSync() {
             ...(cloudDelta.images?.updated || []),
           ]) {
             if (imageMeta.driveFileId) {
-              const existing = await db.getImage(imageMeta.id);
+              const existing = await getImage(imageMeta.id);
               if (!existing) {
                 imagesNeedingRestoration.push(imageMeta);
               }
@@ -187,15 +209,38 @@ export function useSync() {
             // Restore images in parallel (but with some limit to avoid overwhelming)
             const restorePromises = imagesNeedingRestoration.map(async (imageMeta: any) => {
               try {
-                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}`, {
+                const response = await fetch(`/api/images/restore?imageId=${imageMeta.id}&driveFileId=${imageMeta.driveFileId}&contentType=${encodeURIComponent(imageMeta.contentType || "image/png")}`, {
                   credentials: "include", // Ensure cookies are sent
                 });
                 if (response.ok) {
+                  const result = await response.json();
+                  // Convert base64 back to blob
+                  const binaryString = atob(result.data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  const blob = new Blob([bytes], { type: result.contentType });
+                  
+                  // Store in IndexedDB
+                  const db = await getDB();
+                  const image = {
+                    id: result.imageId,
+                    sessionId: imageMeta.sessionId,
+                    data: blob,
+                    contentType: result.contentType,
+                    timestamp: imageMeta.createdAt || Date.now(),
+                    createdAt: imageMeta.createdAt,
+                    driveFileId: result.driveFileId,
+                    syncTimestamp: Date.now(),
+                  };
+                  await db.put("images", image);
                   return true;
                 } else {
                   return false;
                 }
               } catch (error) {
+                console.error(`❌ Failed to restore image ${imageMeta.id}:`, error);
                 return false;
               }
             });
@@ -225,12 +270,16 @@ export function useSync() {
           for (const imageMeta of imagesToUpload) {
             try {
               // Get the full image from local DB to get the blob
-              const image = await db.getImage(imageMeta.id);
+              const image = await getImage(imageMeta.id);
               if (image && !image.driveFileId) {
                 // Upload blob via API
+                // Convert Blob to File to ensure proper FormData handling
+                const blob = image.data instanceof Blob ? image.data : new Blob([image.data], { type: image.contentType });
+                const file = new File([blob], `${image.id}.${image.contentType.split('/')[1] || 'png'}`, { type: image.contentType });
+                
                 const formData = new FormData();
                 formData.append("imageId", image.id);
-                formData.append("blob", image.data, `${image.id}.${image.contentType.split('/')[1] || 'png'}`);
+                formData.append("blob", file);
                 formData.append("contentType", image.contentType);
                 formData.append("sessionId", image.sessionId);
                 
@@ -243,7 +292,7 @@ export function useSync() {
                 if (uploadResponse.ok) {
                   const result = await uploadResponse.json();
                   // Update local image with driveFileId (this also updates syncTimestamp)
-                  await db.updateImage(image.id, { 
+                  await updateImage(image.id, { 
                     driveFileId: result.driveFileId,
                     syncTimestamp: Date.now(),
                   });
