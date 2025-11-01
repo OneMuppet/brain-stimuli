@@ -209,6 +209,24 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                     text-decoration: underline;
                 }
                 
+                .tiptap a {
+                    color: rgb(0, 245, 255);
+                    text-decoration: underline;
+                    text-decoration-color: rgba(0, 245, 255, 0.5);
+                    text-underline-offset: 2px;
+                    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+                }
+                
+                .tiptap a:hover {
+                    color: rgb(150, 255, 255);
+                    text-decoration-color: rgba(0, 245, 255, 0.8);
+                    text-shadow: 0 0 8px rgba(0, 245, 255, 0.6);
+                }
+                
+                .tiptap a:visited {
+                    color: rgb(100, 200, 255);
+                }
+                
                 .tiptap code {
                     background-color: rgba(0, 245, 255, 0.2);
                     color: rgb(0, 245, 255);
