@@ -23,10 +23,14 @@ export function XPBubble({ xp, onComplete, keyId }: XPBubbleProps) {
       className="absolute left-1/2 top-0 -translate-x-1/2 z-40 pointer-events-none"
     >
       <div
-        className="px-3 py-1 bg-black/90 border border-cyan-400/50 text-cyan-300 text-xs font-mono shadow-inner"
+        className="px-3 py-1 bg-black/90 text-xs font-mono shadow-inner"
         style={{
           borderRadius: "var(--r)",
-          boxShadow: "inset 0 0 8px rgba(0, 245, 255, 0.12)",
+          borderColor: "rgba(var(--accent-rgb), 0.5)",
+          borderWidth: "1px",
+          borderStyle: "solid",
+          color: "var(--text-heading)",
+          boxShadow: "inset 0 0 8px rgba(var(--accent-rgb), 0.12)",
         }}
       >
         +{xp} XP

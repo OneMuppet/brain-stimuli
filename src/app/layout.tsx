@@ -5,6 +5,7 @@ import { DataStreamBackground } from "@/components/DataStreamBackground";
 import { BootSequence } from "@/components/BootSequence";
 import { ReticleCursor } from "@/components/ReticleCursor";
 import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -44,12 +45,14 @@ export default function RootLayout({
           fontFamily: "var(--font-inter), sans-serif",
         }}
       >
-        <SessionProvider>
-          <BootSequence />
-          <ReticleCursor />
-          <DataStreamBackground />
-          {children}
-        </SessionProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            <BootSequence />
+            <ReticleCursor />
+            <DataStreamBackground />
+            {children}
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

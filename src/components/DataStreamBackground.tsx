@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 const CHARACTERS = "01アイウエオカキクケコサシスセソタチツテトナニヌネノABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const COLUMN_WIDTH = 25;
@@ -35,6 +36,14 @@ export function DataStreamBackground() {
   const circuitTracesRef = useRef<CircuitTrace[]>([]);
   const circuitNodesRef = useRef<CircuitNode[]>([]);
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const { accentRGB } = useThemeColors();
+  // Use ref to always access latest accentRGB in animation loop
+  const accentRGBRef = useRef(accentRGB);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    accentRGBRef.current = accentRGB;
+  }, [accentRGB]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -159,8 +168,9 @@ export function DataStreamBackground() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw circuit board traces (static lines)
+      const currentAccentRGB = accentRGBRef.current; // Get latest value
       circuitTracesRef.current.forEach((trace) => {
-        ctx.strokeStyle = `rgba(0, 245, 255, ${trace.opacity * 0.04})`; // Even more subtle
+        ctx.strokeStyle = `rgba(${currentAccentRGB}, ${trace.opacity * 0.04})`; // Even more subtle
         ctx.lineWidth = 0.6;
         ctx.beginPath();
         
@@ -193,9 +203,9 @@ export function DataStreamBackground() {
 
           // Draw glowing pulse (very subtle)
           const gradient = ctx.createRadialGradient(pulseX, pulseY, 0, pulseX, pulseY, 5);
-          gradient.addColorStop(0, `rgba(0, 245, 255, ${trace.opacity * 0.35})`);
-          gradient.addColorStop(0.5, `rgba(0, 245, 255, ${trace.opacity * 0.12})`);
-          gradient.addColorStop(1, 'rgba(0, 245, 255, 0)');
+          gradient.addColorStop(0, `rgba(${currentAccentRGB}, ${trace.opacity * 0.35})`);
+          gradient.addColorStop(0.5, `rgba(${currentAccentRGB}, ${trace.opacity * 0.12})`);
+          gradient.addColorStop(1, `rgba(${currentAccentRGB}, 0)`);
           
           ctx.fillStyle = gradient;
           ctx.fillRect(pulseX - 5, pulseY - 5, 10, 10);
@@ -219,13 +229,13 @@ export function DataStreamBackground() {
           
           // Node glow (smaller and more subtle)
           const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, 4);
-          gradient.addColorStop(0, `rgba(0, 245, 255, ${alpha * 0.6})`);
-          gradient.addColorStop(1, 'rgba(0, 245, 255, 0)');
+          gradient.addColorStop(0, `rgba(${currentAccentRGB}, ${alpha * 0.6})`);
+          gradient.addColorStop(1, `rgba(${currentAccentRGB}, 0)`);
           ctx.fillStyle = gradient;
           ctx.fillRect(node.x - 4, node.y - 4, 8, 8);
 
           // Node center (smaller)
-          ctx.fillStyle = `rgba(0, 245, 255, ${alpha * 0.7})`;
+          ctx.fillStyle = `rgba(${currentAccentRGB}, ${alpha * 0.7})`;
           ctx.fillRect(node.x - 1, node.y - 1, 2, 2);
         } else {
           node.active = false;
@@ -239,7 +249,7 @@ export function DataStreamBackground() {
           const y = drop.y + i * 15;
           if (y > 0 && y < canvas.height) {
             const alpha = drop.opacity * (1 - i / drop.chars.length);
-            ctx.fillStyle = `rgba(0, 245, 255, ${alpha * RAIN_OPACITY})`;
+            ctx.fillStyle = `rgba(${currentAccentRGB}, ${alpha * RAIN_OPACITY})`;
             ctx.fillText(char, drop.x, y);
           }
         });
@@ -276,7 +286,7 @@ export function DataStreamBackground() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []);
+  }, [accentRGB]);
 
   return (
     <canvas

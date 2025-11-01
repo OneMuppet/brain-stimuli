@@ -36,8 +36,11 @@ export function XPBar({ xp, progress, combo, level }: XPBarProps) {
                             LEVEL {level}
                         </div>
                     )}
-                    <div className="text-white font-semibold text-lg mono tracking-wider leading-tight">
-                        {xp} <span className="text-sm opacity-70">XP</span>
+                    <div 
+                      className="font-semibold text-lg mono tracking-wider leading-tight"
+                      style={{ color: "var(--accent)" }}
+                    >
+                        {xp} <span className="text-sm opacity-70" style={{ color: "var(--accent)" }}>XP</span>
                     </div>
                 </div>
             </div>

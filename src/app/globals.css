@@ -4,13 +4,15 @@
    HIGH-TECH WEB3 AI CONSOLE — THEME TOKENS
    ═══════════════════════════════════════════════════════════════════ */
 
-:root {
+/* Default theme (cyan) */
+:root,
+.theme-cyan {
   /* Core palette */
   --bg-base: #0A0A0C;
   --text-primary: #E6E6E6;
   --text-secondary: #888888;
   
-  /* Accent system (cyan default) */
+  /* Accent system (cyan) */
   --accent: #00F5FF;
   --accent-rgb: 0, 245, 255;
   
@@ -18,6 +20,11 @@
   --c1: #00424A;
   --c2: #006B75;
   --c3: #00999E;
+  
+  /* Text color variations */
+  --text-heading: rgb(150, 215, 225);
+  --text-body: rgb(170, 225, 235);
+  --text-secondary-accent: rgba(0, 245, 255, 0.7);
   
   /* Geometry */
   --r: 6px;
@@ -28,20 +35,32 @@
 }
 
 /* Theme variants */
-.theme-magenta {
-  --accent: #FF00FF;
-  --accent-rgb: 255, 0, 255;
-  --c1: #FF00FF;
-  --c2: #FF7AE6;
-  --c3: #FFE066;
+.theme-matrix {
+  --accent: #00FF41;
+  --accent-rgb: 0, 255, 65;
+  --c1: #004000;
+  --c2: #006600;
+  --c3: #00CC33;
+  /* Dampened text colors for better blend with green */
+  --text-primary: #8AA88A;
+  --text-secondary: #5A6A5A;
+  --text-heading: rgb(100, 255, 130);
+  --text-body: rgb(120, 255, 150);
+  --text-secondary-accent: rgba(0, 255, 65, 0.7);
 }
 
-.theme-lime {
-  --accent: #CFFF57;
-  --accent-rgb: 207, 255, 87;
-  --c1: #B7FF3C;
-  --c2: #7CFFEA;
-  --c3: #FFE066;
+.theme-ares {
+  --accent: #FF0040;
+  --accent-rgb: 255, 0, 64;
+  --c1: #400000;
+  --c2: #660000;
+  --c3: #CC0033;
+  /* Dampened text colors for better blend with red */
+  --text-primary: #A88A8A;
+  --text-secondary: #6A5A5A;
+  --text-heading: rgb(255, 100, 130);
+  --text-body: rgb(255, 120, 150);
+  --text-secondary-accent: rgba(255, 0, 64, 0.7);
 }
 
 @theme inline {
@@ -353,6 +372,24 @@ body::before {
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Theme transitions - smooth color changes */
+*,
+*::before,
+*::after {
+  transition: color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Exclude animations from transition */
+[class*="animate"],
+[style*="animation"],
+canvas,
+svg {
+  transition: none;
 }
 
 /* Focus rings (accessibility) */

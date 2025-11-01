@@ -69,7 +69,12 @@ export default function Home() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading...</div>
+        <div 
+          className="text-xl mono"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Loading...
+        </div>
       </div>
     );
   }
@@ -81,7 +86,12 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading...</div>
+        <div 
+          className="text-xl mono"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Loading...
+        </div>
       </div>
     );
   }
@@ -122,11 +132,16 @@ export default function Home() {
               <div
                 className={`w-1.5 h-1.5 rounded-full ${
                   isSyncing
-                    ? "bg-cyan-400 animate-pulse"
-                    : isOnline
-                      ? "bg-green-400"
-                      : "bg-yellow-400"
+                    ? "animate-pulse"
+                    : ""
                 }`}
+                style={{
+                  backgroundColor: isSyncing
+                    ? "var(--accent)"
+                    : isOnline
+                      ? "#4ade80"
+                      : "#facc15"
+                }}
               />
               {isSyncing
                 ? "SYNCING..."
@@ -151,14 +166,27 @@ export default function Home() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search sessions..."
-                className="w-full bg-transparent text-white placeholder-white/30 outline-none font-mono text-sm tracking-wide"
-                style={{ touchAction: "manipulation" }}
+                className="w-full bg-transparent outline-none font-mono text-sm tracking-wide"
+                style={{
+                  color: "var(--text-primary)",
+                  touchAction: "manipulation",
+                }}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 text-xl leading-none"
-                  style={{ touchAction: "manipulation" }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xl leading-none"
+                  style={{
+                    color: "var(--text-primary)",
+                    opacity: 0.4,
+                    touchAction: "manipulation",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = "0.7";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = "0.4";
+                  }}
                   aria-label="Clear search"
                 >
                   ×
@@ -187,7 +215,10 @@ export default function Home() {
             transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
             className="text-center py-20 hud-panel max-w-md mx-auto"
           >
-            <p className="text-white text-lg mb-6 console-text">
+            <p 
+              className="text-lg mb-6 console-text"
+              style={{ color: "var(--text-primary)" }}
+            >
               No sessions detected.
             </p>
             <Link
@@ -205,7 +236,10 @@ export default function Home() {
             transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
             className="text-center py-20 hud-panel max-w-md mx-auto"
           >
-            <p className="text-white text-lg mb-6 console-text">
+            <p 
+              className="text-lg mb-6 console-text"
+              style={{ color: "var(--text-primary)" }}
+            >
               No sessions match "{searchQuery}".
             </p>
             <button
@@ -243,9 +277,10 @@ export default function Home() {
                   </div>
 
                   <h2
-                    className="heading-2 text-white mb-3 truncate"
+                    className="heading-2 mb-3 truncate"
                     style={{
                       fontFamily: "var(--font-space-grotesk, sans-serif)",
+                      color: "var(--text-primary)",
                     }}
                   >
                     {session.title}
@@ -267,7 +302,10 @@ export default function Home() {
                         transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
                       />
                     </div>
-                    <span className="text-white text-sm mono font-semibold">
+                    <span 
+                      className="text-sm mono font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {session.score} XP
                     </span>
                   </div>

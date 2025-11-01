@@ -199,7 +199,12 @@ export default function SessionDetailPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading...</div>
+        <div 
+          className="text-xl mono"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Loading...
+        </div>
       </div>
     );
   }
@@ -211,7 +216,12 @@ export default function SessionDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading session...</div>
+        <div 
+          className="text-xl mono"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Loading session...
+        </div>
       </div>
     );
   }
@@ -219,7 +229,10 @@ export default function SessionDetailPage() {
   if (!session) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-lg hud-panel max-w-md text-center">
+        <div 
+          className="text-lg hud-panel max-w-md text-center"
+          style={{ color: "var(--text-primary)" }}
+        >
           <p className="mb-4 console-text">Session not found.</p>
           <button
             onClick={() => router.push("/")}
@@ -283,8 +296,11 @@ export default function SessionDetailPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
-          className="heading-1 text-white mb-2"
-          style={{ fontFamily: "var(--font-space-grotesk, sans-serif)" }}
+          className="heading-1 mb-2"
+          style={{ 
+            fontFamily: "var(--font-space-grotesk, sans-serif)",
+            color: "var(--text-primary)",
+          }}
         >
           <DecryptText text={session.title.toUpperCase()} speed={35} />
         </motion.h1>

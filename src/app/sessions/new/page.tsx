@@ -16,7 +16,12 @@ export default function NewSessionPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-white text-xl mono">Loading...</div>
+        <div 
+          className="text-xl mono"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Loading...
+        </div>
       </div>
     );
   }
@@ -49,8 +54,11 @@ export default function NewSessionPage() {
         className="hud-panel corner-hud max-w-md w-full"
       >
         <h1
-          className="heading-1 text-white mb-6"
-          style={{ fontFamily: "var(--font-space-grotesk, sans-serif)" }}
+          className="heading-1 mb-6"
+          style={{ 
+            fontFamily: "var(--font-space-grotesk, sans-serif)",
+            color: "var(--text-primary)",
+          }}
         >
           New Session
         </h1>
@@ -67,11 +75,12 @@ export default function NewSessionPage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter session title..."
               autoFocus
-              className="w-full px-4 py-3 bg-black/40 text-white placeholder-white/40 focus:outline-none transition-all mono text-sm"
+              className="w-full px-4 py-3 bg-black/40 focus:outline-none transition-all mono text-sm"
               style={{
                 borderRadius: "var(--r)",
                 border: "1px solid rgba(var(--accent-rgb), 0.3)",
                 boxShadow: "inset 0 0 8px rgba(var(--accent-rgb), 0.08)",
+                color: "var(--text-primary)",
               }}
             />
           </div>

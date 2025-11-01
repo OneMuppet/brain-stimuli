@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { getLevel } from "@/lib/scoring";
 import { listSessions } from "@/lib/db";
 import { resetSyncState } from "@/lib/resetSync";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export function SignIn() {
   const { data: session, status } = useSession();
@@ -83,7 +84,10 @@ export function SignIn() {
   if (status === "loading") {
     return (
       <div className="console-text text-xs flex items-center gap-2">
-        <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+        <div 
+          className="w-1.5 h-1.5 rounded-full animate-pulse" 
+          style={{ backgroundColor: "var(--accent)" }}
+        />
         AUTHENTICATING...
       </div>
     );
@@ -206,7 +210,10 @@ export function SignIn() {
                   <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
                   <div className="absolute inset-0 w-1.5 h-1.5 bg-green-400 rounded-full animate-ping" />
                 </div>
-                <span className="text-[10px] font-mono text-white/90 tracking-wide">
+                <span 
+                  className="text-[10px] font-mono tracking-wide"
+                  style={{ color: "var(--text-primary)", opacity: 0.9 }}
+                >
                   {firstName}
                 </span>
               </motion.div>
@@ -247,12 +254,20 @@ export function SignIn() {
                         }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-cyan-400 text-xl font-mono">
+                      <div 
+                        className="w-full h-full flex items-center justify-center text-xl font-mono"
+                        style={{ color: "var(--accent)" }}
+                      >
                         {firstName[0]}{lastName[0] || ""}
                       </div>
                     )}
                     {/* Scanline over image */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-cyan-400/10 via-transparent to-cyan-400/10 pointer-events-none" />
+                    <div 
+                      className="absolute inset-0 bg-gradient-to-b via-transparent pointer-events-none" 
+                      style={{
+                        backgroundImage: `linear-gradient(to bottom, rgba(var(--accent-rgb), 0.1), transparent, rgba(var(--accent-rgb), 0.1))`,
+                      }}
+                    />
                   </motion.div>
 
                   {/* Name & Status */}
@@ -278,11 +293,17 @@ export function SignIn() {
                         animate={{ opacity: 1, filter: "blur(0px)" }}
                         transition={{ duration: 0.12 }}
                       >
-                        <div className="text-sm font-mono text-white tracking-wide truncate">
+                        <div 
+                          className="text-sm font-mono tracking-wide truncate"
+                          style={{ color: "var(--text-primary)" }}
+                        >
                           {firstName}
                         </div>
                         {lastName && (
-                          <div className="text-sm font-mono text-white/80 tracking-wide truncate">
+                          <div 
+                            className="text-sm font-mono tracking-wide truncate"
+                            style={{ color: "var(--text-primary)", opacity: 0.8 }}
+                          >
                             {lastName}
                           </div>
                         )}
@@ -293,7 +314,10 @@ export function SignIn() {
 
                 {/* Divider */}
                 <motion.div 
-                  className="h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent mb-3"
+                  className="h-px bg-gradient-to-r from-transparent to-transparent mb-3"
+                  style={{
+                    backgroundImage: `linear-gradient(to right, transparent, rgba(var(--accent-rgb), 0.2), transparent)`,
+                  }}
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
                   transition={{ duration: 0.15, delay: 0.1 }}
@@ -306,7 +330,10 @@ export function SignIn() {
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.15, delay: 0.12 }}
                 >
-                  <div className="text-[8px] font-mono text-cyan-400/50 tracking-wider uppercase mb-0.5">
+                  <div 
+                    className="text-[8px] font-mono tracking-wider uppercase mb-0.5"
+                    style={{ color: "rgba(var(--accent-rgb), 0.5)" }}
+                  >
                     Email
                   </div>
                   <AnimatePresence mode="wait">
@@ -315,7 +342,8 @@ export function SignIn() {
                       initial={{ opacity: 0, filter: "blur(3px)" }}
                       animate={{ opacity: 1, filter: "blur(0px)" }}
                       transition={{ duration: 0.12 }}
-                      className="text-[10px] font-mono text-white/80 tracking-wide truncate"
+                      className="text-[10px] font-mono tracking-wide truncate"
+                      style={{ color: "var(--text-primary)", opacity: 0.8 }}
                     >
                       {email}
                     </motion.div>
@@ -331,7 +359,10 @@ export function SignIn() {
                 >
                   {/* Security Clearance */}
                   <div>
-                    <div className="text-[8px] font-mono text-cyan-400/50 tracking-wider uppercase mb-0.5">
+                    <div 
+                      className="text-[8px] font-mono tracking-wider uppercase mb-0.5"
+                      style={{ color: "rgba(var(--accent-rgb), 0.5)" }}
+                    >
                       Clearance
                     </div>
                     <AnimatePresence mode="wait">
@@ -340,7 +371,8 @@ export function SignIn() {
                         initial={{ opacity: 0, filter: "blur(3px)" }}
                         animate={{ opacity: 1, filter: "blur(0px)" }}
                         transition={{ duration: 0.12 }}
-                        className="text-[10px] font-mono text-white/90 tracking-wider"
+                        className="text-[10px] font-mono tracking-wider"
+                        style={{ color: "var(--text-primary)", opacity: 0.9 }}
                       >
                         LEVEL-{level}
                       </motion.div>
@@ -349,7 +381,10 @@ export function SignIn() {
 
                   {/* Total XP */}
                   <div>
-                    <div className="text-[8px] font-mono text-cyan-400/50 tracking-wider uppercase mb-0.5">
+                    <div 
+                      className="text-[8px] font-mono tracking-wider uppercase mb-0.5"
+                      style={{ color: "rgba(var(--accent-rgb), 0.5)" }}
+                    >
                       Total XP
                     </div>
                     <AnimatePresence mode="wait">
@@ -358,12 +393,22 @@ export function SignIn() {
                         initial={{ opacity: 0, filter: "blur(3px)" }}
                         animate={{ opacity: 1, filter: "blur(0px)" }}
                         transition={{ duration: 0.12 }}
-                        className="text-[10px] font-mono text-cyan-400 tracking-wider"
+                        className="text-[10px] font-mono tracking-wider"
+                        style={{ color: "var(--accent)" }}
                       >
                         {totalXP.toLocaleString()}
                       </motion.div>
                     </AnimatePresence>
                   </div>
+                </motion.div>
+
+                {/* Theme Switcher */}
+                <motion.div
+                  initial={{ y: 5, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.15, delay: 0.16 }}
+                >
+                  <ThemeSwitcher />
                 </motion.div>
 
                 {/* Reset Sync Button (Emergency) */}
@@ -379,11 +424,20 @@ export function SignIn() {
                       window.location.reload();
                     }
                   }}
-                  className="w-full relative px-3 py-1 text-[8px] font-mono tracking-wider uppercase text-cyan-400/40 hover:text-cyan-400/60 transition-colors text-center mb-2"
+                  className="w-full relative px-3 py-1 text-[8px] font-mono tracking-wider uppercase transition-colors text-center mb-2"
+                  style={{ 
+                    touchAction: "manipulation",
+                    color: "rgba(var(--accent-rgb), 0.4)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.6)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.4)";
+                  }}
                   initial={{ y: 5, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.15, delay: 0.16 }}
-                  style={{ touchAction: "manipulation" }}
                   title="Reset sync state (emergency only)"
                 >
                   <span className="relative z-10">[RESET SYNC]</span>
@@ -415,10 +469,11 @@ export function SignIn() {
         {/* Corner reticles - positioned outside badge to track its edges */}
         {/* Top Left */}
         <motion.div 
-          className="border-l border-t border-cyan-400/40 pointer-events-none z-[60]"
+          className="border-l border-t pointer-events-none z-[60]"
           style={{
             position: "absolute",
             top: "-3px",
+            borderColor: "rgba(var(--accent-rgb), 0.4)",
           }}
           animate={{
             right: isExpanded ? "280px" : "80px",
@@ -431,11 +486,12 @@ export function SignIn() {
         />
         {/* Top Right */}
         <motion.div 
-          className="border-r border-t border-cyan-400/40 pointer-events-none z-[60]"
+          className="border-r border-t pointer-events-none z-[60]"
           style={{
             position: "absolute",
             top: "-3px",
             right: "-3px",
+            borderColor: "rgba(var(--accent-rgb), 0.4)",
           }}
           animate={{
             width: isExpanded ? "8px" : "4px",
@@ -446,9 +502,10 @@ export function SignIn() {
         />
         {/* Bottom Left - positioned to match badge bottom */}
         <motion.div 
-          className="border-l border-b border-cyan-400/40 pointer-events-none z-[60]"
+          className="border-l border-b pointer-events-none z-[60]"
           style={{
             position: "absolute",
+            borderColor: "rgba(var(--accent-rgb), 0.4)",
           }}
           animate={{
             top: `${badgeHeight - 3}px`,
@@ -462,10 +519,11 @@ export function SignIn() {
         />
         {/* Bottom Right - positioned to match badge bottom */}
         <motion.div 
-          className="border-r border-b border-cyan-400/40 pointer-events-none z-[60]"
+          className="border-r border-b pointer-events-none z-[60]"
           style={{
             position: "absolute",
             right: "-3px",
+            borderColor: "rgba(var(--accent-rgb), 0.4)",
           }}
           animate={{
             top: `${badgeHeight - 3}px`,

@@ -30,14 +30,20 @@ export function WelcomeScreen() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="console-text mb-8 space-y-4"
           >
-            <p className="text-white/90 leading-relaxed">
+            <p 
+              className="leading-relaxed"
+              style={{ color: "var(--text-primary)", opacity: 0.9 }}
+            >
               <DecryptText 
                 text="Secure neural interface for capturing, organizing, and syncing your thoughts across devices." 
                 speed={25} 
                 delay={400}
               />
             </p>
-            <p className="text-cyan-400/70 text-sm leading-relaxed mt-4">
+            <p 
+              className="text-sm leading-relaxed mt-4"
+              style={{ color: "rgba(var(--accent-rgb), 0.7)" }}
+            >
               <DecryptText 
                 text="Authentication required to access session console." 
                 speed={20} 

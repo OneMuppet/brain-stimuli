@@ -36,10 +36,19 @@ export function PowerCard({
       >
         {/* Pulsing indicator dot */}
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+          <span 
+            className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" 
+            style={{ backgroundColor: "var(--accent)" }}
+          />
+          <span 
+            className="relative inline-flex rounded-full h-2 w-2" 
+            style={{ backgroundColor: "var(--accent)" }}
+          />
         </span>
-        <span className="text-cyan-300 font-mono text-xs tracking-wide uppercase">
+        <span 
+          className="font-mono text-xs tracking-wide uppercase"
+          style={{ color: "var(--text-heading)" }}
+        >
           {label ?? "CAPTURED"}
         </span>
       </div>

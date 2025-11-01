@@ -105,6 +105,44 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
         isInitializedRef.current = false;
     }, [docKey]);
 
+    // Keyboard shortcuts for headers
+    useEffect(() => {
+        if (!editor) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // Header shortcuts: Cmd+Shift+1/2 for H1/H2, Cmd+Alt+3 for H3 (Cmd+Shift+3 conflicts with macOS screenshot)
+            if (event.metaKey && !event.ctrlKey) {
+                // H1 and H2: Cmd+Shift+1/2
+                if (event.shiftKey && !event.altKey) {
+                    const key = event.key;
+                    if (key === '1') {
+                        event.preventDefault();
+                        editor.chain().focus().toggleHeading({ level: 1 }).run();
+                        return;
+                    }
+                    if (key === '2') {
+                        event.preventDefault();
+                        editor.chain().focus().toggleHeading({ level: 2 }).run();
+                        return;
+                    }
+                }
+                // H3: Cmd+Alt+3 (Cmd+Shift+3 conflicts with macOS screenshot)
+                if (event.altKey && !event.shiftKey && event.key === '3') {
+                    event.preventDefault();
+                    editor.chain().focus().toggleHeading({ level: 3 }).run();
+                    return;
+                }
+            }
+        };
+
+        const editorElement = editor.view.dom;
+        editorElement.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            editorElement.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [editor]);
+
     // Click handler to focus editor
     const handleContainerClick = useCallback(() => {
         if (editor && !editor.isFocused) {
@@ -132,7 +170,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
         <div className="relative">
             {/* Title and status outside border */}
             <div className="flex items-center justify-between mb-3">
-                <h2 className="heading-2" style={{ fontFamily: "var(--font-space-grotesk, sans-serif)", color: "rgb(150, 215, 225)" }}>
+                <h2 className="heading-2" style={{ fontFamily: "var(--font-space-grotesk, sans-serif)", color: "var(--text-heading)" }}>
                     Notes
                 </h2>
                 <AnimatePresence>
@@ -143,7 +181,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                             exit={{ opacity: 0 }}
                             className="console-text text-xs flex items-center gap-2"
                         >
-                            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+                            <div 
+                                className="w-1.5 h-1.5 rounded-full animate-pulse" 
+                                style={{ backgroundColor: "var(--accent)" }}
+                            />
                             SAVING...
                         </motion.div>
                     )}
@@ -152,7 +193,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="console-text text-xs flex items-center gap-2 text-cyan-400"
+                            className="console-text text-xs flex items-center gap-2"
+                            style={{ color: "var(--accent)" }}
                         >
                             ✓ SAVED
                         </motion.div>
@@ -175,12 +217,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
             <style jsx global>{`
                 .tiptap {
                     outline: none;
-                    color: rgb(160, 220, 230);
+                    color: var(--text-body);
                 }
                 
                 .tiptap p {
                     margin: 0.5rem 0;
-                    color: rgb(170, 225, 235);
+                    color: var(--text-body);
                     line-height: 1.5;
                 }
                 
@@ -189,7 +231,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                     font-weight: 600;
                     margin-top: 1.5rem;
                     margin-bottom: 0.75rem;
-                    color: rgb(150, 215, 225);
+                    color: var(--text-heading);
                 }
                 
                 .tiptap h1 { font-size: 2rem; }
@@ -198,7 +240,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 
                 .tiptap strong {
                     font-weight: 700;
-                    color: rgb(140, 210, 220);
+                    color: var(--text-heading);
                 }
                 
                 .tiptap em {
@@ -210,26 +252,28 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 }
                 
                 .tiptap a {
-                    color: rgb(0, 245, 255);
+                    color: var(--accent);
                     text-decoration: underline;
-                    text-decoration-color: rgba(0, 245, 255, 0.5);
+                    text-decoration-color: rgba(var(--accent-rgb), 0.5);
                     text-underline-offset: 2px;
                     transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
                 }
                 
                 .tiptap a:hover {
-                    color: rgb(150, 255, 255);
-                    text-decoration-color: rgba(0, 245, 255, 0.8);
-                    text-shadow: 0 0 8px rgba(0, 245, 255, 0.6);
+                    color: var(--accent);
+                    filter: brightness(1.3);
+                    text-decoration-color: rgba(var(--accent-rgb), 0.8);
+                    text-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
                 }
                 
                 .tiptap a:visited {
-                    color: rgb(100, 200, 255);
+                    color: var(--accent);
+                    opacity: 0.8;
                 }
                 
                 .tiptap code {
-                    background-color: rgba(0, 245, 255, 0.2);
-                    color: rgb(0, 245, 255);
+                    background-color: rgba(var(--accent-rgb), 0.2);
+                    color: var(--accent);
                     padding: 0.125rem 0.25rem;
                     border-radius: 0.25rem;
                     font-family: 'IBM Plex Mono', monospace;
@@ -237,8 +281,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 }
                 
                 .tiptap pre {
-                    background-color: rgba(0, 245, 255, 0.1);
-                    border: 1px solid rgba(0, 245, 255, 0.3);
+                    background-color: rgba(var(--accent-rgb), 0.1);
+                    border: 1px solid rgba(var(--accent-rgb), 0.3);
                     border-radius: 0.5rem;
                     padding: 1rem;
                     margin: 1rem 0;
@@ -248,7 +292,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 .tiptap pre code {
                     background: none;
                     padding: 0;
-                    color: rgb(0, 245, 255);
+                    color: var(--accent);
                 }
                 
                 .tiptap ul, .tiptap ol {
@@ -267,45 +311,45 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 .tiptap li {
                     margin: 0.15rem 0;
                     line-height: 1.4;
-                    color: rgb(170, 225, 235);
+                    color: var(--text-body);
                 }
                 
                 .tiptap table {
                     border-collapse: collapse;
-                    border: 1px solid rgba(0, 245, 255, 0.4);
+                    border: 1px solid rgba(var(--accent-rgb), 0.4);
                     margin: 1.5rem auto;
                     width: 100%;
                 }
                 
                 .tiptap th, .tiptap td {
-                    border: 1px solid rgba(0, 245, 255, 0.3);
+                    border: 1px solid rgba(var(--accent-rgb), 0.3);
                     padding: 0.75rem;
                     min-width: 70px;
                     text-align: left;
-                    color: rgb(170, 225, 235);
+                    color: var(--text-body);
                 }
                 
                 .tiptap th {
-                    background-color: rgba(0, 245, 255, 0.1);
+                    background-color: rgba(var(--accent-rgb), 0.1);
                     font-weight: 600;
-                    color: rgb(150, 215, 225);
+                    color: var(--text-heading);
                 }
                 
                 .tiptap blockquote {
-                    border-left: 3px solid rgba(0, 245, 255, 0.5);
+                    border-left: 3px solid rgba(var(--accent-rgb), 0.5);
                     padding-left: 1rem;
                     margin: 1rem 0;
-                    color: rgb(180, 230, 240);
+                    color: var(--text-body);
                 }
                 
                 .tiptap hr {
                     border: none;
-                    border-top: 1px solid rgba(0, 245, 255, 0.3);
+                    border-top: 1px solid rgba(var(--accent-rgb), 0.3);
                     margin: 2rem 0;
                 }
                 
                 .tiptap p.is-editor-empty:first-child::before {
-                    color: rgba(160, 220, 230, 0.5);
+                    color: rgba(var(--accent-rgb), 0.5);
                     content: attr(data-placeholder);
                     float: left;
                     height: 0;
@@ -314,11 +358,11 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 
                 /* Cursor visibility */
                 .tiptap {
-                    caret-color: rgb(0, 245, 255);
+                    caret-color: var(--accent);
                 }
                 
                 .tiptap * {
-                    caret-color: rgb(0, 245, 255);
+                    caret-color: var(--accent);
                 }
             `}</style>
         </div>
