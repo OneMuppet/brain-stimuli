@@ -3,7 +3,9 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm ci --include=optional
+        # Ensure lightningcss platform binaries are installed
+        - npm ls lightningcss-linux-x64-gnu || npm install lightningcss-linux-x64-gnu --no-save
         # Extract environment variables and write to .env.production for SSR runtime
         - echo "Creating .env.production file for SSR runtime..."
         - echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" >> .env.production
@@ -13,7 +15,7 @@ frontend:
         - echo "✅ Created .env.production with environment variables"
     build:
       commands:
-        - npm run build
+        - npm run build:webpack
   artifacts:
     baseDirectory: .next
     files:
