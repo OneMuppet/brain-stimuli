@@ -32,16 +32,57 @@ export async function POST(req: NextRequest) {
       ? "__Secure-authjs.session-token" 
       : "authjs.session-token";
     
-    const token = await getToken({ 
-      req, 
-      secret: env.NEXTAUTH_SECRET!,
-      cookieName, // Explicitly tell getToken which cookie to read
-    });
+    // Check if the cookie exists
+    const hasCookie = !!req.cookies.get(cookieName)?.value;
+    
+    let token: any = null;
+    let tokenError: Error | null = null;
+    
+    try {
+      token = await getToken({ 
+        req, 
+        secret: env.NEXTAUTH_SECRET!,
+        cookieName, // Explicitly tell getToken which cookie to read
+      });
+    } catch (error) {
+      tokenError = error instanceof Error ? error : new Error(String(error));
+      logger.error("POST /api/sync - Error getting token", { error: tokenError.message });
+    }
+    
+    // If no token found, try without specifying cookie name
+    if (!token && !tokenError) {
+      try {
+        token = await getToken({ 
+          req, 
+          secret: env.NEXTAUTH_SECRET!,
+        });
+      } catch (error) {
+        tokenError = error instanceof Error ? error : new Error(String(error));
+        logger.error("POST /api/sync - Error getting token (fallback)", { error: tokenError.message });
+      }
+    }
     
     if (!token?.accessToken) {
-      logger.error("POST /api/sync - Not authenticated");
+      const errorDetails: any = {
+        hasCookie,
+        cookieName,
+        hasToken: !!token,
+        availableCookies: req.cookies.getAll().map(c => c.name),
+      };
+      
+      if (tokenError) {
+        errorDetails.tokenError = tokenError.message;
+      }
+      if (hasCookie && !token) {
+        errorDetails.hint = "Cookie exists but token decryption failed. This usually means NEXTAUTH_SECRET has changed or doesn't match the secret used to create the session. Try signing out and signing in again.";
+      }
+      
+      logger.error("POST /api/sync - Not authenticated", errorDetails);
       return NextResponse.json(
-        { error: "Not authenticated. Please sign in." },
+        { 
+          error: "Not authenticated. Please sign in.",
+          ...(env.isDebugMode && { details: errorDetails })
+        },
         { status: 401 }
       );
     }
@@ -206,30 +247,113 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Check authentication first - use auth() instead of getToken() for NextAuth v5
+    // Check authentication first
+    const { getToken } = await import("next-auth/jwt");
     const { auth } = await import("@/lib/auth");
-    const session = await auth();
     
-    // Get token for Drive access (still need JWT for accessToken)
     // In NextAuth v5, the cookie name is authjs.session-token (not next-auth.session-token)
     // In production, it's __Secure-authjs.session-token
-    const { getToken } = await import("next-auth/jwt");
     const cookieName = env.isProduction
       ? "__Secure-authjs.session-token" 
       : "authjs.session-token";
     
-    const token = await getToken({ 
-      req, 
-      secret: env.NEXTAUTH_SECRET!,
-      cookieName, // Explicitly tell getToken which cookie to read
-    });
+    // Check if the cookie exists
+    const cookieValue = req.cookies.get(cookieName)?.value;
+    const hasCookie = !!cookieValue;
     
-    if (!session || !token?.accessToken) {
-      logger.error("GET /api/sync - Not authenticated");
+    // Also get token for accessToken - this is the primary way to get accessToken
+    // In NextAuth v5, getToken() reads from cookies in the request
+    let token: any = null;
+    let tokenError: Error | null = null;
+    
+    try {
+      token = await getToken({ 
+        req, 
+        secret: env.NEXTAUTH_SECRET!,
+        cookieName, // Explicitly tell getToken which cookie to read
+      });
+    } catch (error) {
+      tokenError = error instanceof Error ? error : new Error(String(error));
+      logger.error("GET /api/sync - Error getting token", { error: tokenError.message });
+    }
+    
+    // If no token found with expected cookie name, try without specifying cookie name
+    // (NextAuth will try to find it automatically)
+    if (!token && !tokenError) {
+      try {
+        token = await getToken({ 
+          req, 
+          secret: env.NEXTAUTH_SECRET!,
+        });
+      } catch (error) {
+        tokenError = error instanceof Error ? error : new Error(String(error));
+        logger.error("GET /api/sync - Error getting token (fallback)", { error: tokenError.message });
+      }
+    }
+    
+    // Try to get session using auth() - but accessToken is primarily from token
+    let session: any = null;
+    let sessionError: Error | null = null;
+    
+    try {
+      session = await auth();
+    } catch (error) {
+      sessionError = error instanceof Error ? error : new Error(String(error));
+      logger.error("GET /api/sync - Error getting session", { error: sessionError.message });
+    }
+    
+    // Get accessToken from token (primary) or session (fallback)
+    // Token is preferred because it contains the JWT with accessToken
+    const accessToken = token?.accessToken || (session as { accessToken?: string } | null)?.accessToken;
+    
+    // Debug logging
+    if (env.isDebugMode) {
+      logger.debug("GET /api/sync - Auth check", {
+        hasCookie,
+        cookieName,
+        hasSession: !!session,
+        hasToken: !!token,
+        hasAccessToken: !!accessToken,
+        tokenError: tokenError?.message,
+        sessionError: sessionError?.message,
+        cookies: req.cookies.getAll().map(c => c.name),
+        secretLength: env.NEXTAUTH_SECRET?.length || 0,
+      });
+    }
+    
+    if (!accessToken) {
+      // Provide more detailed error message
+      const errorDetails: any = {
+        hasCookie,
+        cookieName,
+        hasSession: !!session,
+        hasToken: !!token,
+        availableCookies: req.cookies.getAll().map(c => c.name),
+      };
+      
+      if (tokenError) {
+        errorDetails.tokenError = tokenError.message;
+      }
+      if (sessionError) {
+        errorDetails.sessionError = sessionError.message;
+      }
+      if (hasCookie && !token) {
+        errorDetails.hint = "Cookie exists but token decryption failed. This usually means NEXTAUTH_SECRET has changed or doesn't match the secret used to create the session. Try signing out and signing in again.";
+      }
+      
+      logger.error("GET /api/sync - Not authenticated", errorDetails);
       return NextResponse.json(
-        { error: "Not authenticated. Please sign in." },
+        { 
+          error: "Not authenticated. Please sign in.",
+          ...(env.isDebugMode && { details: errorDetails })
+        },
         { status: 401 }
       );
+    }
+    
+    // Add accessToken to token if it came from session
+    if (!token?.accessToken && accessToken) {
+      token.accessToken = accessToken;
     }
     
     const since = req.nextUrl.searchParams.get("since");

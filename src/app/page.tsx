@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { listSessions, type Session } from "@/lib/db";
@@ -22,9 +23,11 @@ const MOOD_LINES = [
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [clickedSessionId, setClickedSessionId] = useState<string | null>(null);
   const [mood] = useState(
     () => MOOD_LINES[Math.floor(Math.random() * MOOD_LINES.length)]
   );
@@ -160,16 +163,17 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.4 }}
             className="mb-6"
           >
-            <div className="relative hud-panel corner-hud p-3">
+            <div className="relative hud-panel corner-hud no-padding">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search sessions..."
-                className="w-full bg-transparent outline-none font-mono text-sm tracking-wide"
+                className="w-full bg-transparent font-mono text-sm tracking-wide search-input"
                 style={{
                   color: "var(--text-primary)",
                   touchAction: "manipulation",
+                  padding: "20px",
                 }}
               />
               {searchQuery && (
@@ -263,11 +267,30 @@ export default function Home() {
                   ease: [0.2, 0.8, 0.2, 1],
                 }}
                 className="relative hud-panel corner-hud group hover-lock"
+                style={{
+                  opacity: clickedSessionId === session.id ? 0.7 : 1,
+                  transition: "opacity 0.1s",
+                }}
               >
-                <Link
-                  href={`/sessions/${session.id}`}
-                  className="block"
+                <div
+                  onClick={() => {
+                    setClickedSessionId(session.id);
+                    router.push(`/sessions/${session.id}`);
+                  }}
+                  onMouseEnter={() => {
+                    router.prefetch(`/sessions/${session.id}`);
+                  }}
+                  className="block cursor-pointer"
                   style={{ touchAction: "manipulation" }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setClickedSessionId(session.id);
+                      router.push(`/sessions/${session.id}`);
+                    }
+                  }}
                 >
                   <div className="flex items-center justify-between console-text mb-2">
                     <span className="data-flicker">LVL {getLevel(session.score)}</span>
@@ -309,7 +332,7 @@ export default function Home() {
                       {session.score} XP
                     </span>
                   </div>
-                </Link>
+                </div>
               </motion.div>
             ))}
           </div>
