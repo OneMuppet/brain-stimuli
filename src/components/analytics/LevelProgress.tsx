@@ -36,8 +36,8 @@ export function LevelProgress({ sessions }: LevelProgressProps) {
       className="hud-panel p-4"
     >
       <div 
-        className="text-[8px] font-mono tracking-wider uppercase mb-2"
-        style={{ color: "rgba(var(--accent-rgb), 0.5)" }}
+        className="text-xs font-mono tracking-wider uppercase mb-2"
+        style={{ color: "rgba(var(--accent-rgb), 0.5)", fontSize: "12px" }}
       >
         LEVEL PROGRESS
       </div>

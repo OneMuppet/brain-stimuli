@@ -80,7 +80,13 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   position: relative;
-  cursor: none; /* Custom reticle cursor */
+}
+
+/* Only hide cursor on non-mobile devices (where we have custom reticle cursor) */
+@media (hover: hover) and (pointer: fine) {
+  body {
+    cursor: none; /* Custom reticle cursor */
+  }
 }
 
 h1, .heading-1 {
@@ -138,6 +144,47 @@ input, textarea {
 
 button, a, [role="button"], .cursor-pointer {
   cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE TAP ANIMATION
+   ═══════════════════════════════════════════════════════════════════ */
+
+.tap-animation {
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(var(--accent-rgb), 0.8);
+  border-radius: 50%;
+  animation: tap-ripple 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 0 0 0 rgba(var(--accent-rgb), 0.6),
+    0 0 16px rgba(var(--accent-rgb), 0.4);
+}
+
+@keyframes tap-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Disable cursor: none on mobile */
+@media (hover: none) and (pointer: coarse) {
+  body {
+    cursor: auto;
+  }
+  
+  .cursor-reticle {
+    display: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

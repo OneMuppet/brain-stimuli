@@ -3,7 +3,24 @@ frontend:
   phases:
     preBuild:
       commands:
+        # Install all dependencies including optional ones
         - npm install --include=optional
+        
+        # Explicitly install Linux native bindings for native modules used in the build
+        # These are required because npm has a known bug with optional dependencies:
+        # https://github.com/npm/cli/issues/4828
+        # Without these, the build will fail with "Cannot find native binding" errors
+        #
+        # lightningcss: Used by @tailwindcss/postcss for CSS processing
+        # @tailwindcss/oxide: Native Rust engine used by Tailwind CSS v4
+        #
+        # We use --no-save to avoid modifying package.json with platform-specific deps
+        # The || true ensures build continues even if install fails (non-fatal)
+        #
+        # NOTE: Version numbers should match the versions installed via package.json
+        # If you see native binding errors after updating dependencies, check:
+        # 1. package-lock.json for the actual versions of these packages
+        # 2. Update the version numbers here to match
         - npm install lightningcss-linux-x64-gnu@1.30.2 --no-save || true
         - npm install @tailwindcss/oxide-linux-x64-gnu@4.1.16 --no-save || true
         - echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" >> .env.production

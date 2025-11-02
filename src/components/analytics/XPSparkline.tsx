@@ -41,8 +41,8 @@ export function XPSparkline({ sessions }: XPSparklineProps) {
       className="hud-panel p-4"
     >
       <div 
-        className="text-[8px] font-mono tracking-wider uppercase mb-4"
-        style={{ color: "rgba(var(--accent-rgb), 0.5)" }}
+        className="text-xs font-mono tracking-wider uppercase mb-4"
+        style={{ color: "rgba(var(--accent-rgb), 0.5)", fontSize: "12px" }}
       >
         XP TREND
       </div>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { DataStreamBackground } from "@/components/DataStreamBackground";
 import { BootSequence } from "@/components/BootSequence";
 import { ReticleCursor } from "@/components/ReticleCursor";
+import { TapAnimation } from "@/components/TapAnimation";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SystemToolbar } from "@/components/SystemToolbar";
@@ -31,12 +32,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Brain Stimuli Console",
   description: "High-focus note console with gamified flow",
+  manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logo.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logo.svg", type: "image/svg+xml" },
     ],
   },
 };
@@ -58,6 +60,7 @@ export default function RootLayout({
           <SessionProvider>
             <BootSequence />
             <ReticleCursor />
+            <TapAnimation />
             <DataStreamBackground />
             <SystemToolbar />
             {children}

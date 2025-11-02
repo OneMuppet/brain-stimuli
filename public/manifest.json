@@ -1,0 +1,18 @@
+{
+    "name": "Brain Stimuli Console",
+    "short_name": "Brain Stimuli",
+    "description": "High-focus note console with gamified flow",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#00F5FF",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/logo.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
