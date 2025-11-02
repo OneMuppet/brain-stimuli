@@ -3,20 +3,14 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Remove node_modules to ensure fresh install with optional dependencies
-        - rm -rf node_modules
-        # Install all dependencies including optional ones (required for native bindings)
         - npm install --include=optional
-        # Verify critical native binaries are installed (fallback if missed)
-        - npm ls @tailwindcss/oxide-linux-x64-gnu || npm install @tailwindcss/oxide-linux-x64-gnu --no-save
-        - npm ls lightningcss-linux-x64-gnu || npm install lightningcss-linux-x64-gnu --no-save
         - echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" >> .env.production
         - echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
         - echo "NEXTAUTH_URL=${NEXTAUTH_URL}" >> .env.production
     build:
       commands:
-        - npm run build:webpack
+        - npm run build
   artifacts:
     baseDirectory: .next
     files:
