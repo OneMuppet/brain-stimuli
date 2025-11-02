@@ -1,6 +1,6 @@
 {
-    "name": "Brain Stimuli Console",
-    "short_name": "Brain Stimuli",
+    "name": "AURA-NX0",
+    "short_name": "AURA-NX0",
     "description": "High-focus note console with gamified flow",
     "start_url": "/",
     "display": "standalone",

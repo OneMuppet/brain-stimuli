@@ -31,13 +31,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Brain Stimuli Console",
+  title: "AURA-NX0",
   description: "High-focus note console with gamified flow",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Brain Stimuli",
+    title: "AURA-NX0",
   },
   viewport: {
     width: "device-width",
