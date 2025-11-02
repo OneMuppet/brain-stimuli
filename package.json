@@ -34,10 +34,8 @@
     "framer-motion": "^12.23.24",
     "google-auth-library": "^10.5.0",
     "googleapis": "^164.1.0",
-    "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
     "jspdf": "^3.0.3",
-    "jspdf-autotable": "^5.0.2",
     "next": "16.0.1",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.0",
@@ -61,6 +59,7 @@
     "vitest": "^4.0.6"
   },
   "optionalDependencies": {
+    "html2canvas": "^1.4.1",
     "lightningcss-linux-x64-gnu": "^1.30.2"
   }
 }

@@ -85,7 +85,7 @@ body {
 /* Only hide cursor on non-mobile devices (where we have custom reticle cursor) */
 @media (hover: hover) and (pointer: fine) {
   body {
-    cursor: none; /* Custom reticle cursor */
+  cursor: none; /* Custom reticle cursor */
   }
 }
 

@@ -324,7 +324,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                 
                 .tiptap th, .tiptap td {
                     border: 1px solid rgba(var(--accent-rgb), 0.3);
-                    padding: 0.75rem;
+                    padding: 0.3rem 0.4rem;
                     min-width: 70px;
                     text-align: left;
                     color: var(--text-body);
@@ -334,6 +334,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
                     background-color: rgba(var(--accent-rgb), 0.1);
                     font-weight: 600;
                     color: var(--text-heading);
+                }
+                
+                .tiptap table {
+                    border-collapse: collapse;
+                    border: 1px solid rgba(var(--accent-rgb), 0.4);
+                    margin: 1rem auto;
                 }
                 
                 .tiptap blockquote {

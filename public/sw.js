@@ -1,5 +1,5 @@
 // Service Worker for AURA-NX0 PWA
-const CACHE_NAME = 'aura-nx0-v2';
+const CACHE_NAME = 'aura-nx0-v3'; // Bump version to force cache refresh
 const STATIC_CACHE = [
   '/manifest.json',
   '/logo.svg',
@@ -45,6 +45,12 @@ self.addEventListener('fetch', (event) => {
 
   const request = event.request;
   const url = new URL(request.url);
+  
+  // Never cache auth routes - they must always hit the network
+  if (url.pathname.startsWith('/api/auth/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // For navigation requests (HTML pages), always try network first
   if (request.mode === 'navigate' || request.destination === 'document') {

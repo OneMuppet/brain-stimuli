@@ -42,14 +42,14 @@ export function SystemToolbar() {
         setIsOpen(false);
       }
     };
-    
+
     // Add listener after a delay to avoid immediate close
     const timeoutId = setTimeout(() => {
       openTime = Date.now();
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
     }, 200);
-    
+
     return () => {
       clearTimeout(timeoutId);
       document.removeEventListener("mousedown", handleClickOutside);
@@ -196,14 +196,14 @@ export function SystemToolbar() {
 
               {/* Buttons Container */}
               <div className="flex flex-col items-stretch gap-2 px-3 pb-2">
-                {/* Dashboard Button */}
-                {!isDashboard && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+              {/* Dashboard Button */}
+              {!isDashboard && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                       e.preventDefault();
-                      router.push("/dashboard");
-                    }}
+                    router.push("/dashboard");
+                  }}
                     onTouchStart={(e) => {
                       e.stopPropagation();
                     }}
@@ -211,41 +211,41 @@ export function SystemToolbar() {
                       e.stopPropagation();
                     }}
                     className="w-full px-2 py-1.5 text-[10px] font-mono tracking-wider uppercase transition-all hover-lock text-center"
-                    style={{
-                      touchAction: "manipulation",
-                      color: "rgba(var(--accent-rgb), 0.6)",
-                      border: "1px solid rgba(var(--accent-rgb), 0.2)",
-                      borderRadius: "var(--r)",
-                      backgroundColor: "rgba(0, 0, 0, 0.3)",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "var(--accent)";
-                      e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.4)";
-                      e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-                      e.currentTarget.style.boxShadow = "inset 0 0 8px rgba(var(--accent-rgb), 0.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.6)";
-                      e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.2)";
-                      e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                    title="DASHBOARD"
-                  >
-                    DASHBOARD
-                  </button>
-                )}
+                  style={{
+                    touchAction: "manipulation",
+                    color: "rgba(var(--accent-rgb), 0.6)",
+                    border: "1px solid rgba(var(--accent-rgb), 0.2)",
+                    borderRadius: "var(--r)",
+                    backgroundColor: "rgba(0, 0, 0, 0.3)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--accent)";
+                    e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.4)";
+                    e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                    e.currentTarget.style.boxShadow = "inset 0 0 8px rgba(var(--accent-rgb), 0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.6)";
+                    e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.2)";
+                    e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  title="DASHBOARD"
+                >
+                  DASHBOARD
+                </button>
+              )}
 
                 {/* Fullscreen Button - only show if supported */}
                 {supportsFullscreen && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                       e.preventDefault();
                       if (needsPWAInstall) {
                         setShowPWAInstallPrompt(true);
                       } else {
-                        toggleFullscreen();
+                  toggleFullscreen();
                       }
                     }}
                     onTouchStart={(e) => {
@@ -253,27 +253,27 @@ export function SystemToolbar() {
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                    }}
-                    className="w-full h-6 flex items-center justify-center transition-all hover-lock"
-                    style={{
-                      touchAction: "manipulation",
-                      color: "rgba(var(--accent-rgb), 0.6)",
-                      border: "1px solid rgba(var(--accent-rgb), 0.2)",
-                      borderRadius: "var(--r)",
-                      backgroundColor: "rgba(0, 0, 0, 0.3)",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "var(--accent)";
-                      e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.4)";
-                      e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-                      e.currentTarget.style.boxShadow = "inset 0 0 8px rgba(var(--accent-rgb), 0.12)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.6)";
-                      e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.2)";
-                      e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
+                }}
+                className="w-full h-6 flex items-center justify-center transition-all hover-lock"
+                style={{
+                  touchAction: "manipulation",
+                  color: "rgba(var(--accent-rgb), 0.6)",
+                  border: "1px solid rgba(var(--accent-rgb), 0.2)",
+                  borderRadius: "var(--r)",
+                  backgroundColor: "rgba(0, 0, 0, 0.3)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--accent)";
+                  e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.4)";
+                  e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                  e.currentTarget.style.boxShadow = "inset 0 0 8px rgba(var(--accent-rgb), 0.12)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "rgba(var(--accent-rgb), 0.6)";
+                  e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.2)";
+                  e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
                     title={
                       needsPWAInstall 
                         ? "INSTALL APP FOR FULLSCREEN" 
@@ -281,9 +281,9 @@ export function SystemToolbar() {
                           ? "EXIT FULLSCREEN" 
                           : "ENTER FULLSCREEN"
                     }
-                  >
+              >
                     {isFullscreen || isPWAStandalone ? <IconFullscreenExit /> : <IconFullscreen />}
-                  </button>
+              </button>
                 )}
               </div>
             </motion.div>

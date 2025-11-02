@@ -1,5 +1,4 @@
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import type { Session, Note, Image } from "@/domain/entities";
 import { getLevel } from "@/lib/scoring";
 import { getImageUrl } from "@/lib/db";
@@ -22,456 +21,564 @@ function getThemeColors(): { accent: string; accentRGB: [number, number, number]
 }
 
 /**
- * Convert HTML content to plain text while preserving line breaks and structure
+ * Helper to clean text (remove emojis but keep special chars like ≤, ≥)
+ * Also sanitizes unsafe characters for PDF rendering
  */
-function htmlToText(html: string): string {
+function cleanText(text: string): string {
+  // Remove emojis (they don't render well in PDF)
+  // Keep special characters like ≤, ≥, etc.
+  let cleaned = text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+  
+  // Replace unsafe/control characters that can cause PDF rendering issues
+  cleaned = cleaned
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width spaces
+    .trim();
+  
+  return cleaned;
+}
+
+/**
+ * Parse HTML and extract structured content (text, headings, images, lists)
+ */
+interface ParsedElement {
+  type: "text" | "heading" | "list" | "image" | "table" | "linebreak";
+  content?: string;
+  level?: number; // for headings (1-6)
+  items?: string[]; // for lists
+  imageUrl?: string; // for images
+  rows?: string[][]; // for tables
+  tag?: string; // original tag name
+}
+
+function parseHTML(html: string): ParsedElement[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
   const body = doc.body;
+  const elements: ParsedElement[] = [];
 
-  // Helper function to recursively extract text with line breaks
-  function extractText(node: Node): string {
+  function processNode(node: Node): void {
     if (node.nodeType === Node.TEXT_NODE) {
-      return node.textContent || "";
+      const text = cleanText(node.textContent || "");
+      if (text) {
+        elements.push({ type: "text", content: text });
+      }
+      return;
     }
 
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as Element;
       const tagName = element.tagName.toLowerCase();
-      let text = "";
 
-      // Handle explicit line breaks first
+      // Headings
+      if (tagName.match(/^h[1-6]$/)) {
+        const level = parseInt(tagName[1]);
+        const text = cleanText(element.textContent || "");
+        if (text) {
+          elements.push({ type: "heading", content: text, level, tag: tagName });
+        }
+        return;
+      }
+
+      // Images
+      if (tagName === "img") {
+        const src = element.getAttribute("src");
+        const dataImageId = element.getAttribute("data-image-id");
+        if (src || dataImageId) {
+          elements.push({ type: "image", imageUrl: src || undefined, tag: tagName });
+        }
+        return;
+      }
+
+      // Line breaks
       if (tagName === "br") {
-        return "\n";
+        elements.push({ type: "linebreak" });
+        return;
       }
-      
-      // Handle block-level elements that should create line breaks
-      if (["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li"].includes(tagName)) {
+
+      // Lists
+      if (tagName === "ul" || tagName === "ol") {
+        const items: string[] = [];
+        const listItems = element.querySelectorAll("li");
+        listItems.forEach((li) => {
+          const text = cleanText(li.textContent || "");
+          if (text) {
+            items.push(text);
+          }
+        });
+        if (items.length > 0) {
+          elements.push({ type: "list", items, tag: tagName });
+        }
+        return;
+      }
+
+      // Tables
+      if (tagName === "table") {
+        const rows: string[][] = [];
+        const tableRows = element.querySelectorAll("tr");
+        tableRows.forEach((tr) => {
+          const row: string[] = [];
+          const cells = tr.querySelectorAll("th, td");
+          cells.forEach((cell) => {
+            const text = cleanText(cell.textContent || "");
+            row.push(text);
+          });
+          if (row.length > 0) {
+            rows.push(row);
+          }
+        });
+        if (rows.length > 0) {
+          elements.push({ type: "table", rows, tag: tagName });
+        }
+        return;
+      }
+
+      // Paragraphs and divs - process children
+      if (tagName === "p" || tagName === "div") {
         // Process children first
-        for (let i = 0; i < element.childNodes.length; i++) {
-          const childText = extractText(element.childNodes[i]);
-          if (childText) {
-            text += childText;
-          }
+        Array.from(element.childNodes).forEach(processNode);
+        // Add spacing after paragraphs
+        if (tagName === "p") {
+          elements.push({ type: "linebreak" });
         }
-        // Add line break after block elements (but not before if it's the first)
-        if (text && !text.endsWith("\n")) {
-          text += "\n";
-        }
-      } else {
-        // Inline elements - process children with space preservation
-        for (let i = 0; i < element.childNodes.length; i++) {
-          const childText = extractText(element.childNodes[i]);
-          if (childText && text && !text.endsWith(" ") && !text.endsWith("\n") && !childText.startsWith(" ")) {
-            // Add space between inline elements if needed
-            text += " ";
-          }
-          text += childText;
-        }
+        return;
       }
 
-      return text;
+      // Inline elements - just process children
+      Array.from(element.childNodes).forEach(processNode);
     }
-
-    return "";
   }
 
-  let result = extractText(body);
-  
-  // Normalize whitespace - collapse multiple spaces to single space (but preserve line breaks)
-  result = result.replace(/[ \t]+/g, " ");
-  
-  // Clean up multiple consecutive line breaks (max 2)
-  result = result.replace(/\n{3,}/g, "\n\n");
-  
-  // Remove spaces at start/end of lines
-  result = result
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n")
-    .trim();
-
-  return result;
+  Array.from(body.childNodes).forEach(processNode);
+  return elements;
 }
 
 /**
- * Convert a blob image to base64 for PDF embedding
+ * Load image and convert to base64 data URL
  */
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      resolve(result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn("[PDF Export] Failed to load image:", url, error);
+    return null;
+  }
 }
 
 /**
- * Export a session to PDF with theme-aware styling
+ * Export a session to PDF with clean, native rendering
  */
 export async function exportSessionToPDF(
   session: Session,
   note: Note | null,
   images: Image[]
 ): Promise<void> {
-  const { accent, accentRGB } = getThemeColors();
-  const doc = new jsPDF();
+  console.log('%c[AURA-NX0 PDF Export]', 'color: #00F5FF; font-weight: bold; font-size: 14px;', 
+    'PDF Export v4.0 (Native) - Starting export for:', session.title);
+  
+  const { accentRGB } = getThemeColors();
+  const doc = new jsPDF({
+    compress: true,
+    orientation: 'portrait',
+    unit: 'pt',
+  });
+  
+  // Ensure UTF-8 encoding for special characters like ≤, ≥
+  doc.setProperties({
+    title: session.title,
+    creator: 'AURA-NX0',
+  });
+  
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  // Optimized margins - smaller but still readable
-  const margin = 18; // Left margin
-  const rightMargin = 18; // Right margin  
-  const contentWidth = pageWidth - margin - rightMargin;
+  const margin = 15; // Small, clean margins
+  const contentWidth = pageWidth - 2 * margin;
   let yPos = margin;
 
   // Theme color for accents
   const [r, g, b] = accentRGB;
-  const accentPDFColor: [number, number, number] = [r / 255, g / 255, b / 255];
+  const accentPDFColor: [number, number, number] = [r / 255, g / 255, b / 255]; // For text color (0-1 range)
+  const accentPDFFillColor: [number, number, number] = accentRGB; // For fill color (0-255 range)
+
+  // Helper to sanitize text for PDF rendering
+  function sanitizeText(text: string): string {
+    // jsPDF handles most characters, but we ensure no control chars
+    return text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
+      .replace(/[\u200B-\u200D\uFEFF]/g, ''); // Remove zero-width spaces
+  }
+
+  // Helper to get proper line height for a font size
+  function getLineHeight(fontSize: number): number {
+    return fontSize * 1.5; // Standard 1.5 line height for readability
+  }
+
+  // Helper to check if we need a new page and add one if needed
+  function ensurePageSpace(requiredHeight: number): void {
+    if (yPos + requiredHeight > pageHeight - margin - 15) {
+      doc.addPage();
+      yPos = margin;
+    }
+  }
+
+  // Helper to add text with automatic wrapping and proper spacing
+  function addText(text: string, fontSize: number, isBold = false): number {
+    doc.setFont("helvetica", isBold ? "bold" : "normal");
+    doc.setFontSize(fontSize);
+    
+    // Sanitize text before rendering
+    const sanitized = sanitizeText(text);
+    const lines = doc.splitTextToSize(sanitized, contentWidth);
+    const lineHeight = getLineHeight(fontSize);
+    const totalHeight = lines.length * lineHeight;
+    
+    ensurePageSpace(totalHeight);
+    
+    lines.forEach((line) => {
+      ensurePageSpace(lineHeight);
+      doc.text(line, margin, yPos);
+      yPos += lineHeight;
+    });
+    
+    return totalHeight; // Return height used for spacing calculations
+  }
 
   // Header section
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(16);
   doc.setTextColor(...accentPDFColor);
-  doc.text(session.title.toUpperCase(), margin, yPos);
-  yPos += 12;
+  const sanitizedHeaderTitle = sanitizeText(session.title.toUpperCase());
+  const titleLines = doc.splitTextToSize(sanitizedHeaderTitle, contentWidth);
+  const titleLineHeight = getLineHeight(16);
+  
+  ensurePageSpace(titleLines.length * titleLineHeight + 8);
+  
+  titleLines.forEach((line) => {
+    doc.text(line, margin, yPos);
+    yPos += titleLineHeight;
+  });
+  yPos += 8; // Space after title
 
   // Metadata
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(150, 150, 150);
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 120);
   const level = getLevel(session.score);
-  const dateStr = new Date(session.createdAt).toLocaleDateString("en-US", {
+  const formattedDate = new Date(session.createdAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  doc.text(`Level ${level} • ${session.score} XP • ${dateStr}`, margin, yPos);
-  yPos += 15;
+  const metadataLineHeight = getLineHeight(9);
+  ensurePageSpace(metadataLineHeight);
+  doc.text(`Level ${level} • ${session.score} XP • ${formattedDate}`, margin, yPos);
+  yPos += metadataLineHeight + 8; // Line height + spacing
 
   // Divider line
   doc.setDrawColor(...accentPDFColor);
-  doc.setLineWidth(0.5);
-  doc.line(margin, yPos, pageWidth - rightMargin, yPos);
-  yPos += 10;
+  doc.setLineWidth(0.3);
+  ensurePageSpace(12);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 12; // Space after divider
 
-  // Note content - use html2canvas to preserve emojis and formatting
+  // Note content
   if (note && note.content && typeof window !== "undefined") {
-    try {
-      // Get actual theme colors from CSS variables
-      const root = document.documentElement;
-      const accentColor = getComputedStyle(root).getPropertyValue("--accent").trim() || "#00F5FF";
-      const textBodyColor = getComputedStyle(root).getPropertyValue("--text-body").trim() || "rgb(170, 225, 235)";
-      const textHeadingColor = getComputedStyle(root).getPropertyValue("--text-heading").trim() || "rgb(150, 215, 225)";
-
-      // Replace blob URLs and data-image-id attributes with actual image URLs
-      let processedContent = note.content;
-      for (const image of images) {
-        try {
-          const imageUrl = await getImageUrl(image);
-          // Replace data-image-id references with actual URLs
-          processedContent = processedContent.replace(
-            new RegExp(`data-image-id="${image.id}"`, "g"),
-            `src="${imageUrl}"`
-          );
-          // Also replace blob URLs if any
-          processedContent = processedContent.replace(
-            new RegExp(`blob:[^"']*`, "g"),
-            (match) => {
-              // Try to match blob URL to image - simple approach
-              return match;
-            }
-          );
-        } catch {
-          // Skip if image can't be loaded
-        }
+    // Replace data-image-id with actual image URLs
+    let processedContent = note.content;
+    const imageMap = new Map<string, string>();
+    
+    for (const image of images) {
+      try {
+        const imageUrl = await getImageUrl(image);
+        imageMap.set(image.id, imageUrl);
+        processedContent = processedContent.replace(
+          new RegExp(`data-image-id="${image.id}"`, "g"),
+          `src="${imageUrl}"`
+        );
+      } catch {
+        // Skip if image can't be loaded
       }
+    }
 
-      // Create a temporary container with the HTML content
-      const tempContainer = document.createElement("div");
-      tempContainer.style.position = "absolute";
-      tempContainer.style.left = "-9999px";
-      tempContainer.style.top = "0";
-      // Set container width in CSS pixels to match PDF content width
-      // jsPDF uses points (1pt = 1/72 inch), CSS uses pixels at ~96 DPI
-      // 1 PDF point ≈ 1.33 CSS pixels at 96 DPI
-      // html2canvas will render this at scale: 2, so canvas will be 2x larger
-      // We'll scale it back down when adding to PDF
-      const contentWidthPx = contentWidth * (96 / 72); // Convert PDF points to CSS pixels
-      tempContainer.style.width = `${contentWidthPx}px`;
-      tempContainer.style.maxWidth = `${contentWidthPx}px`;
-      tempContainer.style.padding = "12px";
-      tempContainer.style.backgroundColor = "#0A0A0C"; // Dark background
-      tempContainer.style.color = textBodyColor;
-      tempContainer.style.fontFamily = "'Courier New', monospace";
-      tempContainer.style.fontSize = "11px"; // Smaller font to prevent cutoff
-      tempContainer.style.lineHeight = "1.4";
-      tempContainer.style.boxSizing = "border-box";
-      tempContainer.innerHTML = processedContent;
+    // Parse HTML into structured elements
+    const parsedElements = parseHTML(processedContent);
 
-      // Apply theme-aware styles with actual color values
-      const style = document.createElement("style");
-      style.textContent = `
-        #pdf-temp-container {
-          overflow-x: visible;
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-        }
-        #pdf-temp-container a {
-          color: ${accentColor};
-          text-decoration: underline;
-        }
-        #pdf-temp-container h1, #pdf-temp-container h2, #pdf-temp-container h3, 
-        #pdf-temp-container h4, #pdf-temp-container h5, #pdf-temp-container h6 {
-          color: ${textHeadingColor};
-          font-weight: bold;
-          margin: 1em 0 0.5em 0;
-        }
-        #pdf-temp-container h1 { font-size: 1.5em; }
-        #pdf-temp-container h2 { font-size: 1.3em; }
-        #pdf-temp-container h3 { font-size: 1.1em; }
-        #pdf-temp-container p {
-          margin: 0.5em 0;
-        }
-        #pdf-temp-container strong {
-          font-weight: bold;
-        }
-        #pdf-temp-container em {
-          font-style: italic;
-        }
-        #pdf-temp-container ul, #pdf-temp-container ol {
-          margin: 0.5em 0;
-          padding-left: 1.5em;
-        }
-        #pdf-temp-container img {
-          max-width: 100%;
-          height: auto;
-          display: block;
-          margin: 0.5em 0;
-        }
-        /* Table handling for PDF export */
-        #pdf-temp-container table {
-          width: 100% !important;
-          max-width: 100% !important;
-          border-collapse: collapse;
-          margin: 0.75em 0;
-          table-layout: fixed !important;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-        }
-        #pdf-temp-container table th,
-        #pdf-temp-container table td {
-          padding: 0.35em 0.4em;
-          border: 1px solid rgba(var(--accent-rgb), 0.3);
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          hyphens: auto;
-          font-size: 10px !important;
-          line-height: 1.3;
-        }
-        #pdf-temp-container table th {
-          background-color: rgba(var(--accent-rgb), 0.1);
-          font-weight: bold;
-          color: ${textHeadingColor};
-        }
-        #pdf-temp-container table td {
-          color: ${textBodyColor};
-        }
-        /* Ensure columns don't overflow - better column distribution */
-        #pdf-temp-container table td:first-child,
-        #pdf-temp-container table th:first-child {
-          width: 18% !important;
-        }
-        #pdf-temp-container table td:nth-child(2),
-        #pdf-temp-container table th:nth-child(2) {
-          width: 52% !important;
-        }
-        #pdf-temp-container table td:last-child,
-        #pdf-temp-container table th:last-child {
-          width: 30% !important;
-        }
-      `;
-      tempContainer.id = "pdf-temp-container";
-      document.head.appendChild(style);
-      document.body.appendChild(tempContainer);
+    // Create image URL cache
+    const imageCache = new Map<string, string>();
 
-      // Wait a bit for images to load
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Convert to canvas
-      // Use scale 1 to match container size directly (no scaling needed)
-      const canvas = await html2canvas(tempContainer, {
-        backgroundColor: "#0A0A0C",
-        scale: 1, // Match container size - no scaling needed
-        useCORS: true,
-        logging: false,
-        allowTaint: false,
-        removeContainer: false,
-      });
-
-      // Clean up
-      document.body.removeChild(tempContainer);
-      document.head.removeChild(style);
-
-      // Calculate image dimensions to fit page
-      // Canvas is rendered at scale 1, matching container size in CSS pixels
-      // Container: contentWidthPx CSS pixels = contentWidth * (96/72) CSS pixels
-      // Canvas: contentWidthPx CSS pixels wide
-      // Target: contentWidth PDF points wide
-      // Scale both width and height proportionally from CSS pixels to PDF points
-      const maxWidth = contentWidth; // Target width in PDF points
-      const pxToPtScale = 72 / 96; // Convert CSS pixels to PDF points (1 CSS px = 72/96 PDF pt)
-      
-      // Scale both dimensions proportionally
-      let imgWidth = maxWidth;
-      let imgHeight = canvas.height * pxToPtScale;
-
-      // Split across multiple pages if needed
-      const maxHeightPerPage = pageHeight - margin - 30; // Leave space for footer
-      let remainingHeight = imgHeight;
-      let sourceY = 0;
-      const sourceHeight = canvas.height;
-
-      while (remainingHeight > 0) {
-        // Check if we need a new page
-        if (yPos > pageHeight - 40) {
-          doc.addPage();
-          yPos = margin;
-        }
-
-        // Calculate how much of the image fits on this page
-        const heightThisPage = Math.min(remainingHeight, maxHeightPerPage - (yPos - margin));
-        // Calculate which portion of the canvas to extract for this page
-        // Convert PDF point height to canvas pixel height
-        const sourceYThisPage = (sourceY / imgHeight) * canvas.height;
-        const sourceHeightThisPage = (heightThisPage / imgHeight) * canvas.height;
-
-        // Add this portion of the image
-        const canvasDataUrl = canvas.toDataURL("image/png");
-        
-        // Create a temporary canvas for this page's portion
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sourceHeightThisPage;
-        const pageCtx = pageCanvas.getContext("2d");
-        if (pageCtx) {
-          pageCtx.drawImage(
-            canvas,
-            0, sourceYThisPage, canvas.width, sourceHeightThisPage,
-            0, 0, canvas.width, sourceHeightThisPage
-          );
-          const pageDataUrl = pageCanvas.toDataURL("image/png");
+    // Render each element
+    for (const element of parsedElements) {
+      switch (element.type) {
+        case "heading": {
+          const fontSize = 12 - (element.level || 1) + 1; // h1=12pt, h2=11pt, etc.
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(fontSize);
+          doc.setTextColor(...accentPDFColor);
           
-          // Scale to fit page width
-          // pageCanvas is at CSS pixel size (scale 1)
-          // We need to scale it to PDF points
-          const pageImgWidth = maxWidth;
-          // Scale height proportionally using pxToPtScale
-          const pageImgHeight = (pageCanvas.height * pxToPtScale);
+          const lineHeight = getLineHeight(fontSize);
+          const sanitizedContent = sanitizeText(element.content || "");
+          const lines = doc.splitTextToSize(sanitizedContent, contentWidth);
+          const totalHeight = lines.length * lineHeight;
           
-          doc.addImage(pageDataUrl, "PNG", margin, yPos, pageImgWidth, pageImgHeight);
-        }
-
-        yPos += heightThisPage + 5;
-        sourceY += heightThisPage;
-        remainingHeight -= heightThisPage;
-      }
-
-      yPos += 10;
-    } catch (error) {
-      // Fallback to text-based rendering if html2canvas fails
-      console.warn("Failed to render HTML with emojis, falling back to text", error);
-      doc.setFont("courier", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(200, 200, 200);
-
-      const text = htmlToText(note.content);
-      
-      // Split by line breaks first to preserve structure, then wrap long lines
-      const paragraphs = text.split("\n").filter((p) => p.trim().length > 0);
-      
-      for (const paragraph of paragraphs) {
-        // Check if we need a new page before starting a paragraph
-        if (yPos > pageHeight - 40) {
-          doc.addPage();
-          yPos = margin;
-        }
-        
-        // Split long lines to fit page width
-        const lines = doc.splitTextToSize(paragraph.trim(), contentWidth);
-        
-        for (const line of lines) {
-          if (yPos > pageHeight - 30) {
-            doc.addPage();
-            yPos = margin;
+          // Add space before heading (except first element)
+          if (yPos > margin + 20) {
+            yPos += 8;
           }
-          doc.text(line.trim(), margin, yPos);
-          yPos += 6;
+          
+          ensurePageSpace(totalHeight + 10);
+          
+          lines.forEach((line) => {
+            doc.text(line, margin, yPos);
+            yPos += lineHeight;
+          });
+          
+          yPos += 8; // Spacing after heading
+          break;
         }
-        
-        // Add spacing between paragraphs
-        yPos += 2;
+
+        case "text": {
+          // Add space before paragraph
+          yPos += 6;
+          
+          const usedHeight = addText(element.content || "", 10, false);
+          yPos += 6; // Spacing after paragraph
+          break;
+        }
+
+        case "list": {
+          // Add space before list
+          yPos += 6;
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(60, 60, 60);
+          
+          const lineHeight = getLineHeight(10);
+          
+          (element.items || []).forEach((item, itemIdx) => {
+            const sanitizedItem = sanitizeText(item);
+            const lines = doc.splitTextToSize(`• ${sanitizedItem}`, contentWidth - 5);
+            const itemHeight = lines.length * lineHeight;
+            
+            ensurePageSpace(itemHeight);
+            
+            lines.forEach((line, idx) => {
+              doc.text(line, margin + (idx === 0 ? 0 : 5), yPos);
+              yPos += lineHeight;
+            });
+            
+            // Spacing between list items
+            if (itemIdx < element.items!.length - 1) {
+              yPos += 3;
+            }
+          });
+          
+          yPos += 8; // Spacing after list
+          break;
+        }
+
+        case "table": {
+          if (!element.rows || element.rows.length === 0) break;
+          
+          // Add space before table
+          yPos += 8;
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          
+          const numCols = Math.max(...element.rows.map(r => r.length));
+          const colWidth = contentWidth / numCols;
+          const fontSize = 9;
+          const lineHeight = getLineHeight(fontSize);
+          const cellPadding = 5; // Adequate padding to keep text inside
+          
+          // Draw table row by row
+          element.rows.forEach((row, rowIdx) => {
+            // Calculate row height: find the cell with most lines
+            let maxCellLines = 1;
+            const cellLineCounts: number[] = [];
+            
+            row.forEach((cell) => {
+              const sanitizedCell = sanitizeText(cell || "");
+              const cellLines = doc.splitTextToSize(sanitizedCell, colWidth - (cellPadding * 2));
+              const lineCount = cellLines.length;
+              cellLineCounts.push(lineCount);
+              maxCellLines = Math.max(maxCellLines, lineCount);
+            });
+            
+            // Row height = top padding + content height + bottom padding
+            // Content height = number of lines * line height
+            const contentHeight = maxCellLines * lineHeight;
+            const rowHeight = cellPadding + contentHeight + cellPadding;
+            
+            ensurePageSpace(rowHeight + 3);
+            
+            // Draw the row - first draw all borders, then draw all text
+            let xPos = margin;
+            
+            // Draw cell borders first
+            row.forEach((cell, colIdx) => {
+              doc.setDrawColor(200, 200, 200);
+              doc.setLineWidth(0.2);
+              doc.rect(xPos, yPos, colWidth, rowHeight, "S");
+              xPos += colWidth;
+            });
+            
+            // Draw cell text - ensure it's properly positioned within cells
+            xPos = margin;
+            row.forEach((cell, colIdx) => {
+              const isHeader = rowIdx === 0;
+              
+              // Set font style
+              if (isHeader) {
+                doc.setTextColor(...accentPDFColor);
+                doc.setFont("helvetica", "bold");
+              } else {
+                doc.setTextColor(60, 60, 60);
+                doc.setFont("helvetica", "normal");
+              }
+              
+              // Get text lines for this cell
+              const cellText = sanitizeText(cell || "");
+              const cellLines = doc.splitTextToSize(cellText, colWidth - (cellPadding * 2));
+              
+              // Position text: start from top padding, adjust for baseline
+              // jsPDF text() positions at baseline, so we add a bit for proper top padding
+              let textYPos = yPos + cellPadding + (lineHeight * 0.7); // Adjusted for proper baseline positioning
+              
+              // Draw each line, ensuring it stays within the cell
+              cellLines.forEach((line) => {
+                const maxY = yPos + rowHeight - cellPadding;
+                if (textYPos <= maxY) {
+                  doc.text(line, xPos + cellPadding, textYPos);
+                  textYPos += lineHeight;
+                }
+              });
+              
+              xPos += colWidth;
+            });
+            
+            // Move to next row
+            yPos += rowHeight + 3; // Spacing between rows
+          });
+          
+          yPos += 10; // Spacing after table
+          break;
+        }
+
+        case "image": {
+          if (!element.imageUrl) break;
+          
+          try {
+            // Get image from cache or load it
+            let imageDataUrl = imageCache.get(element.imageUrl);
+            if (!imageDataUrl) {
+              imageDataUrl = await loadImageAsDataUrl(element.imageUrl);
+              if (imageDataUrl) {
+                imageCache.set(element.imageUrl, imageDataUrl);
+              }
+            }
+            
+            if (imageDataUrl) {
+              // Create temporary image to get dimensions
+              const img = new Image();
+              await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = imageDataUrl!;
+              });
+              
+              // Calculate dimensions to fit page width
+              const maxWidth = contentWidth;
+              const aspectRatio = img.width / img.height;
+              let imgWidth = maxWidth;
+              let imgHeight = maxWidth / aspectRatio;
+              
+              // Limit height
+              const maxHeight = pageHeight - margin - 20;
+              if (imgHeight > maxHeight) {
+                imgHeight = maxHeight;
+                imgWidth = imgHeight * aspectRatio;
+              }
+              
+              // Add space before image
+              yPos += 8;
+              ensurePageSpace(imgHeight + 8);
+              
+              doc.addImage(imageDataUrl, "PNG", margin, yPos, imgWidth, imgHeight);
+              yPos += imgHeight + 8; // Image height + spacing after
+            }
+          } catch (error) {
+            console.warn("[PDF Export] Failed to add image:", element.imageUrl, error);
+            // Add placeholder text
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text("[Image]", margin, yPos);
+            yPos += 5;
+          }
+          break;
+        }
+
+        case "linebreak": {
+          yPos += 6; // Space for line break
+          break;
+        }
       }
-      yPos += 5;
     }
   } else if (note && note.content) {
-    // Server-side fallback: text-only (no emojis)
-    doc.setFont("courier", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(200, 200, 200);
-
-    const text = htmlToText(note.content);
+    // Fallback: simple text rendering
+    const parser = new DOMParser();
+    const doc2 = parser.parseFromString(note.content, "text/html");
+    const text = doc2.body.textContent || "";
     
-    // Split by line breaks first to preserve structure, then wrap long lines
-    const paragraphs = text.split("\n").filter((p) => p.trim().length > 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
     
-    for (const paragraph of paragraphs) {
-      // Check if we need a new page before starting a paragraph
-      if (yPos > pageHeight - 40) {
-        doc.addPage();
-        yPos = margin;
-      }
-      
-      // Split long lines to fit page width
-      const lines = doc.splitTextToSize(paragraph.trim(), contentWidth);
-      
-      for (const line of lines) {
-        if (yPos > pageHeight - 30) {
-          doc.addPage();
-          yPos = margin;
-        }
-        doc.text(line.trim(), margin, yPos);
-        yPos += 6;
-      }
-      
-      // Add spacing between paragraphs
+    const paragraphs = text.split(/\n+/).filter(p => p.trim());
+    paragraphs.forEach((paragraph) => {
+      addText(paragraph.trim(), 10);
       yPos += 2;
-    }
-    yPos += 5;
+    });
   }
 
-  // Note: Images are now embedded within the note content when using html2canvas
-  // No separate Images section needed
-
-  // Footer
+  // Footer on all pages
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    doc.setFont("courier", "normal");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(150, 150, 150);
     doc.text(
       `AURA-NX0 • Page ${i} of ${totalPages}`,
       pageWidth / 2,
-      pageHeight - 10,
+      pageHeight - 8,
       { align: "center" }
     );
   }
 
-  // Save PDF
-  const filename = `${session.title.replace(/[^a-z0-9]/gi, "_")}_${new Date(session.createdAt).toISOString().split("T")[0]}.pdf`;
+  // Sanitize filename - remove/replace unsafe characters for file systems
+  function sanitizeFilename(name: string): string {
+    // Replace unsafe characters with safe alternatives
+    return name
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_") // Remove/reserve unsafe filesystem characters
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/_{2,}/g, "_") // Replace multiple underscores with single
+      .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+      .slice(0, 200); // Limit length to prevent issues
+  }
+
+  // Save PDF with sanitized filename
+  const sanitizedTitle = sanitizeFilename(session.title);
+  const dateStr = new Date(session.createdAt).toISOString().split("T")[0];
+  const filename = sanitizedTitle ? `${sanitizedTitle}_${dateStr}.pdf` : `session_${dateStr}.pdf`;
   doc.save(filename);
 }
-
