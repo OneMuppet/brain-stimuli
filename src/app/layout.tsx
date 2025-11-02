@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Space_Grotesk, IBM_Plex_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { DataStreamBackground } from "@/components/DataStreamBackground";
@@ -33,6 +34,19 @@ export const metadata: Metadata = {
   title: "Brain Stimuli Console",
   description: "High-focus note console with gamified flow",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Brain Stimuli",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: "cover", // For iPhone notch/Dynamic Island support
+  },
+  themeColor: "#00F5FF",
   icons: {
     icon: [
       { url: "/logo.svg", type: "image/svg+xml" },
@@ -67,6 +81,7 @@ export default function RootLayout({
           </SessionProvider>
         </ThemeProvider>
       </body>
+      <Script src="/register-sw.js" strategy="afterInteractive" />
     </html>
   );
 }
