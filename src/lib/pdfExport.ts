@@ -127,7 +127,7 @@ export async function exportSessionToPDF(
 
   // Theme color for accents
   const [r, g, b] = accentRGB;
-  const accentPDFColor = [r / 255, g / 255, b / 255];
+  const accentPDFColor: [number, number, number] = [r / 255, g / 255, b / 255];
 
   // Header section
   doc.setFont("helvetica", "bold");

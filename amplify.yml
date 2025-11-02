@@ -4,15 +4,11 @@ frontend:
     preBuild:
       commands:
         - npm ci --include=optional
-        # Ensure lightningcss platform binaries are installed
         - npm ls lightningcss-linux-x64-gnu || npm install lightningcss-linux-x64-gnu --no-save
-        # Extract environment variables and write to .env.production for SSR runtime
-        - echo "Creating .env.production file for SSR runtime..."
         - echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" >> .env.production
         - echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
         - echo "NEXTAUTH_URL=${NEXTAUTH_URL}" >> .env.production
-        - echo "✅ Created .env.production with environment variables"
     build:
       commands:
         - npm run build:webpack
