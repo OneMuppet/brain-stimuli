@@ -121,9 +121,9 @@ export async function exportSessionToPDF(
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  // Reduced margins for better space utilization
-  const margin = 15; // Reduced from 20
-  const rightMargin = 15; // Separate right margin
+  // Optimized margins - smaller but still readable
+  const margin = 18; // Left margin
+  const rightMargin = 18; // Right margin  
   const contentWidth = pageWidth - margin - rightMargin;
   let yPos = margin;
 
@@ -194,18 +194,20 @@ export async function exportSessionToPDF(
       tempContainer.style.position = "absolute";
       tempContainer.style.left = "-9999px";
       tempContainer.style.top = "0";
-      // Use actual content width for proper table/column rendering
-      // Calculate pixel width: jsPDF uses points (1pt = 1/72 inch), convert to pixels
-      // Standard PDF is 8.5" x 11" at 72 DPI = 612pt x 792pt
-      // For better quality in html2canvas, we use 2x scale but match actual content width
-      const contentWidthPx = contentWidth * 2; // 2x for quality, matches actual rendered width
+      // Set container width in CSS pixels to match PDF content width
+      // jsPDF uses points (1pt = 1/72 inch), CSS uses pixels at ~96 DPI
+      // 1 PDF point ≈ 1.33 CSS pixels at 96 DPI
+      // html2canvas will render this at scale: 2, so canvas will be 2x larger
+      // We'll scale it back down when adding to PDF
+      const contentWidthPx = contentWidth * (96 / 72); // Convert PDF points to CSS pixels
       tempContainer.style.width = `${contentWidthPx}px`;
-      tempContainer.style.padding = "15px";
+      tempContainer.style.maxWidth = `${contentWidthPx}px`;
+      tempContainer.style.padding = "12px";
       tempContainer.style.backgroundColor = "#0A0A0C"; // Dark background
       tempContainer.style.color = textBodyColor;
       tempContainer.style.fontFamily = "'Courier New', monospace";
-      tempContainer.style.fontSize = "14px";
-      tempContainer.style.lineHeight = "1.6";
+      tempContainer.style.fontSize = "11px"; // Smaller font to prevent cutoff
+      tempContainer.style.lineHeight = "1.4";
       tempContainer.style.boxSizing = "border-box";
       tempContainer.innerHTML = processedContent;
 
@@ -251,20 +253,23 @@ export async function exportSessionToPDF(
         }
         /* Table handling for PDF export */
         #pdf-temp-container table {
-          width: 100%;
+          width: 100% !important;
+          max-width: 100% !important;
           border-collapse: collapse;
-          margin: 1em 0;
-          table-layout: auto;
+          margin: 0.75em 0;
+          table-layout: fixed !important;
           word-wrap: break-word;
           overflow-wrap: break-word;
         }
         #pdf-temp-container table th,
         #pdf-temp-container table td {
-          padding: 0.5em;
+          padding: 0.35em 0.4em;
           border: 1px solid rgba(var(--accent-rgb), 0.3);
           word-wrap: break-word;
           overflow-wrap: break-word;
           hyphens: auto;
+          font-size: 10px !important;
+          line-height: 1.3;
         }
         #pdf-temp-container table th {
           background-color: rgba(var(--accent-rgb), 0.1);
@@ -274,10 +279,18 @@ export async function exportSessionToPDF(
         #pdf-temp-container table td {
           color: ${textBodyColor};
         }
-        /* Ensure columns don't overflow */
+        /* Ensure columns don't overflow - better column distribution */
+        #pdf-temp-container table td:first-child,
+        #pdf-temp-container table th:first-child {
+          width: 18% !important;
+        }
+        #pdf-temp-container table td:nth-child(2),
+        #pdf-temp-container table th:nth-child(2) {
+          width: 52% !important;
+        }
         #pdf-temp-container table td:last-child,
         #pdf-temp-container table th:last-child {
-          max-width: 30%;
+          width: 30% !important;
         }
       `;
       tempContainer.id = "pdf-temp-container";
@@ -288,15 +301,12 @@ export async function exportSessionToPDF(
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Convert to canvas
-      // Use scale 2 for quality, but ensure width matches our content width
+      // Use scale 1 to match container size directly (no scaling needed)
       const canvas = await html2canvas(tempContainer, {
         backgroundColor: "#0A0A0C",
-        scale: 2, // Higher quality
+        scale: 1, // Match container size - no scaling needed
         useCORS: true,
         logging: false,
-        width: contentWidthPx,
-        height: tempContainer.scrollHeight,
-        windowWidth: contentWidthPx,
         allowTaint: false,
         removeContainer: false,
       });
@@ -306,12 +316,17 @@ export async function exportSessionToPDF(
       document.head.removeChild(style);
 
       // Calculate image dimensions to fit page
-      // Scale down from canvas (which is at 2x scale) to actual PDF points
-      const canvasToPDFRatio = 2; // Since we used scale: 2
-      const maxWidth = contentWidth;
-      const imgAspectRatio = canvas.width / canvas.height;
+      // Canvas is rendered at scale 1, matching container size in CSS pixels
+      // Container: contentWidthPx CSS pixels = contentWidth * (96/72) CSS pixels
+      // Canvas: contentWidthPx CSS pixels wide
+      // Target: contentWidth PDF points wide
+      // Scale both width and height proportionally from CSS pixels to PDF points
+      const maxWidth = contentWidth; // Target width in PDF points
+      const pxToPtScale = 72 / 96; // Convert CSS pixels to PDF points (1 CSS px = 72/96 PDF pt)
+      
+      // Scale both dimensions proportionally
       let imgWidth = maxWidth;
-      let imgHeight = maxWidth / imgAspectRatio;
+      let imgHeight = canvas.height * pxToPtScale;
 
       // Split across multiple pages if needed
       const maxHeightPerPage = pageHeight - margin - 30; // Leave space for footer
@@ -328,8 +343,10 @@ export async function exportSessionToPDF(
 
         // Calculate how much of the image fits on this page
         const heightThisPage = Math.min(remainingHeight, maxHeightPerPage - (yPos - margin));
-        const sourceYThisPage = (sourceY / imgHeight) * sourceHeight;
-        const sourceHeightThisPage = (heightThisPage / imgHeight) * sourceHeight;
+        // Calculate which portion of the canvas to extract for this page
+        // Convert PDF point height to canvas pixel height
+        const sourceYThisPage = (sourceY / imgHeight) * canvas.height;
+        const sourceHeightThisPage = (heightThisPage / imgHeight) * canvas.height;
 
         // Add this portion of the image
         const canvasDataUrl = canvas.toDataURL("image/png");
@@ -348,12 +365,11 @@ export async function exportSessionToPDF(
           const pageDataUrl = pageCanvas.toDataURL("image/png");
           
           // Scale to fit page width
-          // pageCanvas contains a portion of the full canvas
-          // We scale it to maxWidth and calculate height proportionally
+          // pageCanvas is at CSS pixel size (scale 1)
+          // We need to scale it to PDF points
           const pageImgWidth = maxWidth;
-          // Use the aspect ratio of the extracted portion
-          const pageAspectRatio = pageCanvas.width / pageCanvas.height;
-          const pageImgHeight = pageImgWidth / pageAspectRatio;
+          // Scale height proportionally using pxToPtScale
+          const pageImgHeight = (pageCanvas.height * pxToPtScale);
           
           doc.addImage(pageDataUrl, "PNG", margin, yPos, pageImgWidth, pageImgHeight);
         }
