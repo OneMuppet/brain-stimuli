@@ -10,7 +10,7 @@ frontend:
         - echo "NEXTAUTH_URL=${NEXTAUTH_URL}" >> .env.production
     build:
       commands:
-        - npm run build
+        - npm run build:webpack
   artifacts:
     baseDirectory: .next
     files:
