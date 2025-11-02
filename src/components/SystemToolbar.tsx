@@ -120,7 +120,6 @@ export function SystemToolbar() {
           setIsOpen(prev => !prev);
         }
       }}
-      initial={false}
     >
       {/* Toolbar Container */}
       <motion.div
