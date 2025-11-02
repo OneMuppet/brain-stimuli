@@ -4,6 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm install --include=optional
+        - npm install lightningcss-linux-x64-gnu@1.30.2 --no-save || true
         - echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" >> .env.production
         - echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
