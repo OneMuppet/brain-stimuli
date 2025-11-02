@@ -49,10 +49,19 @@ export const metadata: Metadata = {
   themeColor: "#00F5FF",
   icons: {
     icon: [
-      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/logo.svg", type: "image/svg+xml", sizes: "any" }, // SVG favicon (primary)
+      { url: "/ios/192.png", sizes: "192x192", type: "image/png" },
+      { url: "/ios/512.png", sizes: "512x512", type: "image/png" },
+      { url: "/ios/1024.png", sizes: "1024x1024", type: "image/png" },
     ],
     apple: [
-      { url: "/logo.svg", type: "image/svg+xml", sizes: "180x180" },
+      { url: "/ios/180.png", sizes: "180x180", type: "image/png" },
+      { url: "/ios/120.png", sizes: "120x120", type: "image/png" },
+      { url: "/ios/152.png", sizes: "152x152", type: "image/png" },
+      { url: "/ios/167.png", sizes: "167x167", type: "image/png" },
+    ],
+    shortcut: [
+      { url: "/logo.svg", type: "image/svg+xml" },
     ],
   },
 };

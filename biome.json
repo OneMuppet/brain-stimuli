@@ -7,7 +7,12 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["node_modules", ".next", "dist", "build"]
+    "experimentalScannerIgnores": [
+      "node_modules",
+      ".next",
+      "dist",
+      "build"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -17,9 +22,6 @@
     "lineEnding": "lf",
     "lineWidth": 100,
     "attributePosition": "auto"
-  },
-  "organizeImports": {
-    "enabled": true
   },
   "linter": {
     "enabled": true,
@@ -52,7 +54,10 @@
   },
   "overrides": [
     {
-      "include": ["*.ts", "*.tsx"],
+      "includes": [
+        "*.ts",
+        "*.tsx"
+      ],
       "linter": {
         "rules": {
           "correctness": {
