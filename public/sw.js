@@ -1,18 +1,16 @@
-// Service Worker for Brain Stimuli Console PWA
-const CACHE_NAME = 'brain-stimuli-v1';
-const urlsToCache = [
-  '/',
-  '/dashboard',
+// Service Worker for AURA-NX0 PWA
+const CACHE_NAME = 'aura-nx0-v2';
+const STATIC_CACHE = [
   '/manifest.json',
   '/logo.svg',
 ];
 
-// Install event - cache assets
+// Install event - cache static assets only (not HTML pages)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        return cache.addAll(urlsToCache);
+        return cache.addAll(STATIC_CACHE);
       })
       .catch((error) => {
         // Silently fail if cache fails
@@ -38,40 +36,72 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim(); // Take control of all pages
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - network first for navigation, cache for static assets
 self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request)
-          .then((response) => {
-            // Don't cache non-GET requests
-            if (event.request.method !== 'GET') {
-              return response;
-            }
+  const request = event.request;
+  const url = new URL(request.url);
 
-            // Clone the response
+  // For navigation requests (HTML pages), always try network first
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Only cache successful responses
+          if (response.status === 200) {
             const responseToCache = response.clone();
-
             caches.open(CACHE_NAME)
               .then((cache) => {
-                cache.put(event.request, responseToCache);
+                cache.put(request, responseToCache);
               });
-
-            return response;
-          })
-          .catch(() => {
-            // If network fails and no cache, return offline page
-            if (event.request.destination === 'document') {
+          }
+          return response;
+        })
+        .catch(() => {
+          // Network failed, try cache as fallback
+          return caches.match(request)
+            .then((cachedResponse) => {
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              // If no cache, try index fallback
               return caches.match('/');
+            });
+        })
+    );
+    return;
+  }
+
+  // For static assets (JS, CSS, images), cache first, then network
+  event.respondWith(
+    caches.match(request)
+      .then((response) => {
+        if (response) {
+          return response;
+        }
+        // Not in cache, fetch from network
+        return fetch(request)
+          .then((response) => {
+            // Only cache successful GET requests
+            if (response.status === 200 && request.method === 'GET') {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(request, responseToCache);
+                });
             }
+            return response;
           });
+      })
+      .catch(() => {
+        // Both cache and network failed
+        if (request.destination === 'document') {
+          return caches.match('/');
+        }
       })
   );
 });

@@ -21,7 +21,7 @@ export function WelcomeScreen() {
             className="heading-1 mb-6"
             style={{ fontFamily: "var(--font-space-grotesk, sans-serif)" }}
           >
-            <DecryptText text="BRAIN STIMULI" speed={40} />
+            <DecryptText text="AURA-NX0" speed={40} />
           </motion.h1>
 
           <motion.div

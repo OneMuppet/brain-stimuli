@@ -394,7 +394,7 @@ export async function exportSessionToPDF(
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.text(
-      `Brain Stimuli • Page ${i} of ${totalPages}`,
+      `AURA-NX0 • Page ${i} of ${totalPages}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: "center" }
