@@ -156,7 +156,7 @@ function parseHTML(html: string): ParsedElement[] {
 /**
  * Load image and convert to bytes for pdf-lib
  */
-async function loadImageBytes(url: string): Promise<Uint8Array | null> {
+async function loadImageBytes(url: string): Promise<Uint8Array | undefined> {
   try {
     const response = await fetch(url);
     const blob = await response.blob();
@@ -164,7 +164,7 @@ async function loadImageBytes(url: string): Promise<Uint8Array | null> {
     return new Uint8Array(arrayBuffer);
   } catch (error) {
     console.warn("[PDF Export] Failed to load image:", url, error);
-    return null;
+    return undefined;
   }
 }
 
@@ -428,7 +428,7 @@ export async function exportSessionToPDF(
     const parsedElements = parseHTML(processedContent);
 
     // Create image cache
-    const imageCache = new Map<string, Uint8Array>();
+    const imageCache = new Map<string, Uint8Array | undefined>();
 
     // Render each element
     for (const element of parsedElements) {
@@ -720,7 +720,7 @@ export async function exportSessionToPDF(
 
   // Save PDF
   const pdfBytes = await doc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
