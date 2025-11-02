@@ -333,7 +333,7 @@ export async function exportSessionToPDF(
     
     ensurePageSpace(totalHeight);
     
-    lines.forEach((line) => {
+    lines.forEach((line: string) => {
       try {
         page.drawText(line, {
           x: margin,
@@ -372,7 +372,7 @@ export async function exportSessionToPDF(
   
   ensurePageSpace(headerHeight + 10);
   
-  headerLines.forEach((line) => {
+  headerLines.forEach((line: string) => {
     page.drawText(line, {
       x: margin,
       y: yPos,
@@ -452,7 +452,7 @@ export async function exportSessionToPDF(
           
           ensurePageSpace(totalHeight + 10);
           
-          headingLines.forEach((line) => {
+          headingLines.forEach((line: string) => {
             page.drawText(line, {
               x: margin,
               y: yPos,
@@ -490,7 +490,7 @@ export async function exportSessionToPDF(
             
             ensurePageSpace(itemHeight);
             
-            listLines.forEach((line, idx) => {
+            listLines.forEach((line: string, idx: number) => {
               page.drawText(line, {
                 x: margin + (idx === 0 ? 0 : 5),
                 y: yPos,
@@ -572,7 +572,7 @@ export async function exportSessionToPDF(
               // Position text within cell
               let textYPos = yPos - cellPadding - fontSize * 0.8; // Position from top
               
-              cellLines.forEach((line) => {
+              cellLines.forEach((line: string) => {
                 const minY = yPos - rowHeight + cellPadding;
                 if (textYPos >= minY) {
                   page.drawText(line, {
