@@ -35,9 +35,9 @@
     "google-auth-library": "^10.5.0",
     "googleapis": "^164.1.0",
     "idb": "^8.0.3",
-    "jspdf": "^3.0.3",
     "next": "16.0.1",
     "next-auth": "^5.0.0-beta.30",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "three": "^0.180.0"
@@ -59,7 +59,6 @@
     "vitest": "^4.0.6"
   },
   "optionalDependencies": {
-    "html2canvas": "^1.4.1",
     "lightningcss-linux-x64-gnu": "^1.30.2"
   }
 }
