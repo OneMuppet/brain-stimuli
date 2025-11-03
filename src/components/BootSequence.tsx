@@ -15,14 +15,15 @@ export function BootSequence() {
       return;
     }
 
-    // Timeline: 0-300ms logo → 300-900ms init → 900-1200ms secure → 1200-1400ms fade
-    const logoTimer = setTimeout(() => setStage("init"), 300);
-    const initTimer = setTimeout(() => setStage("secure"), 900);
-    const secureTimer = setTimeout(() => setStage("done"), 1200);
+    // Timeline: 0-4200ms logo animation → 4200-4800ms init → 4800-5400ms secure → 5400-5800ms fade
+    // Animated logo: ring (1.6s) + morse code sequence (~2.6s from ring end) = ~4.2s total
+    const logoTimer = setTimeout(() => setStage("init"), 4200);
+    const initTimer = setTimeout(() => setStage("secure"), 4800);
+    const secureTimer = setTimeout(() => setStage("done"), 5400);
     const doneTimer = setTimeout(() => {
       setVisible(false);
       sessionStorage.setItem("system-booted", "true");
-    }, 1400);
+    }, 5800);
 
     return () => {
       clearTimeout(logoTimer);
@@ -57,40 +58,23 @@ export function BootSequence() {
         onClick={handleSkip}
         className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center cursor-pointer"
       >
-        {/* Logo outline draw */}
+        {/* Animated logo - plays full animation sequence */}
         {stage === "logo" && (
-          <motion.svg
-            width="60"
-            height="60"
-            viewBox="0 0 60 60"
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="stroke-[var(--accent)]"
+            className="w-64 h-64 max-w-[80vw] max-h-[80vw]"
           >
-            <motion.circle
-              cx="30"
-              cy="30"
-              r="25"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+            <img
+              src="/logo-animated.svg"
+              alt="AURA-NX0"
+              className="w-full h-full"
+              style={{
+                filter: "drop-shadow(0 0 20px rgba(0, 245, 255, 0.3))",
+              }}
             />
-            <motion.path
-              d="M 20 25 L 30 35 L 40 25"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
-            />
-          </motion.svg>
+          </motion.div>
         )}
 
         {/* Initializing text */}
