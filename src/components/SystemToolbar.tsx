@@ -8,10 +8,16 @@ import { useFullscreen } from "@/hooks/useFullscreen";
 import { IconFullscreen } from "@/components/icons/IconFullscreen";
 import { IconFullscreenExit } from "@/components/icons/IconFullscreenExit";
 
+// Helper to detect if device is mobile/touch
+const isMobile = () => {
+  if (typeof window === 'undefined') return false;
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+};
+
 /**
  * System Toolbar - HUD-themed fold-out control panel
  * Contains navigation and system controls (dashboard, fullscreen)
- * Positioned top-left to complement profile badge (top-right)
+ * Positioned bottom-left to complement profile badge (top-right)
  */
 export function SystemToolbar() {
   const router = useRouter();
@@ -71,13 +77,15 @@ export function SystemToolbar() {
     return null;
   }
 
+  const isMobileDevice = isMobile();
+
   return (
     <motion.div
       ref={containerRef}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.2 }}
-      className="fixed top-4 left-4 z-40"
+      className="fixed bottom-4 left-4 z-40"
       style={{ position: "fixed" }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
@@ -236,8 +244,8 @@ export function SystemToolbar() {
                 </button>
               )}
 
-                {/* Fullscreen Button - only show if supported */}
-                {supportsFullscreen && (
+                {/* Fullscreen Button - only show if supported and not on mobile */}
+                {supportsFullscreen && !isMobileDevice && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -291,7 +299,39 @@ export function SystemToolbar() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Corner reticles - positioned outside toolbar to track its edges */}
+      {/* Corner reticles - positioned outside toolbar to track its edges (bottom-left placement) */}
+      {/* Bottom Left (primary corner) */}
+      <motion.div
+        className="border-l border-b pointer-events-none z-[60]"
+        style={{
+          position: "absolute",
+          left: "-3px",
+          bottom: "-3px",
+          borderColor: "rgba(var(--accent-rgb), 0.4)",
+        }}
+        animate={{
+          width: isExpanded ? "8px" : "4px",
+          height: isExpanded ? "8px" : "4px",
+          opacity: isExpanded ? 1 : 0.4,
+        }}
+        transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+      />
+      {/* Bottom Right */}
+      <motion.div
+        className="border-r border-b pointer-events-none z-[60]"
+        style={{
+          position: "absolute",
+          bottom: "-3px",
+          right: "-3px",
+          borderColor: "rgba(var(--accent-rgb), 0.4)",
+        }}
+        animate={{
+          width: isExpanded ? "8px" : "4px",
+          height: isExpanded ? "8px" : "4px",
+          opacity: isExpanded ? 1 : 0.4,
+        }}
+        transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+      />
       {/* Top Left */}
       <motion.div
         className="border-l border-t pointer-events-none z-[60]"
@@ -318,38 +358,6 @@ export function SystemToolbar() {
         }}
         animate={{
           right: "-3px",
-          width: isExpanded ? "8px" : "4px",
-          height: isExpanded ? "8px" : "4px",
-          opacity: isExpanded ? 1 : 0.4,
-        }}
-        transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
-      />
-      {/* Bottom Left */}
-      <motion.div
-        className="border-l border-b pointer-events-none z-[60]"
-        style={{
-          position: "absolute",
-          left: "-3px",
-          bottom: "-3px",
-          borderColor: "rgba(var(--accent-rgb), 0.4)",
-        }}
-        animate={{
-          width: isExpanded ? "8px" : "4px",
-          height: isExpanded ? "8px" : "4px",
-          opacity: isExpanded ? 1 : 0.4,
-        }}
-        transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
-      />
-      {/* Bottom Right */}
-      <motion.div
-        className="border-r border-b pointer-events-none z-[60]"
-        style={{
-          position: "absolute",
-          bottom: "-3px",
-          right: "-3px",
-          borderColor: "rgba(var(--accent-rgb), 0.4)",
-        }}
-        animate={{
           width: isExpanded ? "8px" : "4px",
           height: isExpanded ? "8px" : "4px",
           opacity: isExpanded ? 1 : 0.4,

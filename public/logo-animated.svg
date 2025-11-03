@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="aura-nx0-animated" xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 512 512" width="1024" height="1024"
+     role="img" aria-label="AURA-NX0 luminous logo, one-shot animation (Morse cadence)">
+  <title>AURA-NX0 – one-shot animated (ease-in ring + Morse cadence)</title>
+
+  <defs>
+    <!-- Background + vignette -->
+    <linearGradient id="bg" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#061A2F"/>
+      <stop offset=".55" stop-color="#061327"/>
+      <stop offset="1" stop-color="#050A16"/>
+    </linearGradient>
+    <linearGradient id="rimLight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF" stop-opacity=".16"/>
+      <stop offset=".35" stop-color="#FFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="256" cy="256" r="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".14"/>
+    </radialGradient>
+
+    <!-- Luminous ring -->
+    <linearGradient id="ringStroke" x1="256" y1="100" x2="256" y2="412" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7FF1FF"/>
+      <stop offset=".5" stop-color="#46E5FF"/>
+      <stop offset="1" stop-color="#00D0F0"/>
+    </linearGradient>
+    <filter id="outerGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="ringHighlight" x1="160" y1="170" x2="352" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#FFF" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Ambient glow behind Morse -->
+    <radialGradient id="ambient" cx="256" cy="230" r="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00E7FF" stop-opacity=".20"/>
+      <stop offset="1" stop-color="#00E7FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Baked glossy bar fill (single shape per token, export-safe) -->
+    <linearGradient id="barBaked" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset=".18" stop-color="#A6FFFF"/>
+      <stop offset=".55" stop-color="#3BE4FF"/>
+      <stop offset="1" stop-color="#00BEEA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background (square; iOS applies mask later) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#rimLight)"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+
+  <!-- Ambient halo -->
+  <circle cx="256" cy="230" r="120" fill="url(#ambient)"/>
+
+  <!-- Self-drawing ring (ease-in: slow -> fast) -->
+  <g filter="url(#outerGlow)">
+    <circle cx="256" cy="256" r="156" fill="none" stroke="url(#ringStroke)" stroke-width="18"
+            stroke-linecap="round"
+            stroke-dasharray="980" stroke-dashoffset="980">
+      <!-- circumference≈2πr≈980 -->
+      <animate id="ringDraw" attributeName="stroke-dashoffset"
+               from="980" to="0" dur="1.8s" begin="0s" fill="freeze"
+               calcMode="spline" keyTimes="0;1" keySplines=".42 0 1 1"/>
+    </circle>
+    <!-- Soft specular appears near the end -->
+    <path d="M176,168 A156,156 0 0 1 336,168"
+          fill="none" stroke="url(#ringHighlight)" stroke-width="6" stroke-linecap="round"
+          opacity="0">
+      <animate attributeName="opacity" from="0" to="1" begin="ringDraw.end-0.35s" dur="0.35s" fill="freeze"/>
+    </path>
+  </g>
+
+  <!-- Morse A U R A, true Morse-like cadence -->
+  <!-- Timings (seconds): dot=0.12, dash=0.20, intra-symbol gap=0.08, inter-letter gap=0.16 -->
+  <g>
+    <!-- A (.-)  -->
+    <rect x="196" y="194" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="a1" attributeName="width" from="0" to="32" dur=".12s" begin="ringDraw.end+0.12s" fill="freeze"/>
+    </rect>
+    <rect x="252" y="194" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="a2" attributeName="width" from="0" to="64" dur=".20s" begin="a1.end+.08s" fill="freeze"/>
+    </rect>
+
+    <!-- U (..-) -->
+    <rect x="168" y="230" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="u1" attributeName="width" from="0" to="32" dur=".12s" begin="a2.end+.16s" fill="freeze"/>
+    </rect>
+    <rect x="224" y="230" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="u2" attributeName="width" from="0" to="32" dur=".12s" begin="u1.end+.08s" fill="freeze"/>
+    </rect>
+    <rect x="280" y="230" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="u3" attributeName="width" from="0" to="64" dur=".20s" begin="u2.end+.08s" fill="freeze"/>
+    </rect>
+
+    <!-- R (.-.) -->
+    <rect x="168" y="266" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="r1" attributeName="width" from="0" to="32" dur=".12s" begin="u3.end+.16s" fill="freeze"/>
+    </rect>
+    <rect x="224" y="266" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="r2" attributeName="width" from="0" to="64" dur=".20s" begin="r1.end+.08s" fill="freeze"/>
+    </rect>
+    <rect x="312" y="266" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="r3" attributeName="width" from="0" to="32" dur=".12s" begin="r2.end+.08s" fill="freeze"/>
+    </rect>
+
+    <!-- A (.-) -->
+    <rect x="196" y="302" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate id="a3" attributeName="width" from="0" to="32" dur=".12s" begin="r3.end+.16s" fill="freeze"/>
+    </rect>
+    <rect x="252" y="302" width="0" height="16" rx="8" fill="url(#barBaked)">
+      <animate attributeName="width" from="0" to="64" dur=".20s" begin="a3.end+.08s" fill="freeze"/>
+    </rect>
+  </g>
+</svg>
