@@ -1,30 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="aura-nx0-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AURA-NX0 app icon">
-  <title>AURA-NX0</title>
+<svg id="aura-nx0-icon" xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 512 512" width="1024" height="1024"
+     role="img" aria-label="AURA Morse code icon (iOS 26 luminous, export-safe)">
+  <title>AURA-NX0 – iOS 26 luminous (export-safe)</title>
   <defs>
-    <!-- Very dark gradient background -->
+    <!-- BACKGROUND -->
     <linearGradient id="bg" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A0F16"/>
-      <stop offset="1" stop-color="#071323"/>
+      <stop offset="0"   stop-color="#061A2F"/>
+      <stop offset="0.55" stop-color="#061327"/>
+      <stop offset="1"   stop-color="#050A16"/>
+    </linearGradient>
+    <linearGradient id="rimLight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#FFFFFF" stop-opacity=".16"/>
+      <stop offset=".35" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1"   stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="256" cy="256" r="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".14"/>
+    </radialGradient>
+
+    <!-- RING -->
+    <linearGradient id="ringStroke" x1="256" y1="100" x2="256" y2="412" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#7FF1FF"/>
+      <stop offset="0.5" stop-color="#46E5FF"/>
+      <stop offset="1"   stop-color="#00D0F0"/>
+    </linearGradient>
+    <filter id="outerGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="ringHighlight" x1="160" y1="170" x2="352" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity=".32"/>
+      <stop offset="1"   stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- AMBIENT GLOW BEHIND LINES -->
+    <radialGradient id="ambient" cx="256" cy="230" r="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00E7FF" stop-opacity=".20"/>
+      <stop offset="1" stop-color="#00E7FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- SINGLE baked gradient for each bar (gloss at top, richer cyan mid, slight darkening bottom) -->
+    <linearGradient id="barBaked" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset=".18" stop-color="#A6FFFF" stop-opacity="1"/>
+      <stop offset=".55" stop-color="#3BE4FF" stop-opacity="1"/>
+      <stop offset="1"   stop-color="#00BEEA" stop-opacity="1"/>
     </linearGradient>
   </defs>
 
-  <!-- Rounded square background -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- BACKGROUND (square; iOS applies the mask later) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#rimLight)"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
 
-  <!-- Cyan circle + four note lines -->
-  <g fill="none" stroke="#00E7FF" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Circle (slightly larger again) -->
-    <circle cx="256" cy="256" r="156" stroke-width="18"/>
+  <!-- Ambient cyan field -->
+  <circle cx="256" cy="230" r="120" fill="url(#ambient)"/>
 
-    <!-- Left-aligned note lines (top & bottom longest and equal) -->
-    <!-- Top (longest) -->
-    <line x1="176" y1="224" x2="336" y2="224" stroke-width="16"/>
-    <!-- Second -->
-    <line x1="176" y1="252" x2="312" y2="252" stroke-width="16"/>
-    <!-- Third -->
-    <line x1="176" y1="280" x2="292" y2="280" stroke-width="16"/>
-    <!-- Bottom (longest, same as top) -->
-    <line x1="176" y1="308" x2="336" y2="308" stroke-width="16"/>
+  <!-- Luminous ring -->
+  <g filter="url(#outerGlow)">
+    <circle cx="256" cy="256" r="156" fill="none" stroke="url(#ringStroke)" stroke-width="18"/>
+    <path d="M176,168 A156,156 0 0 1 336,168" fill="none" stroke="url(#ringHighlight)" stroke-width="6" stroke-linecap="round"/>
   </g>
+
+  <!-- MORSE A U R A (mass-centered, short-pill dots, baked gloss; NO overlays, NO filters) -->
+  <!-- Row A (.-), y=202 -->
+  <rect x="196" y="194" width="32" height="16" rx="8" fill="url(#barBaked)"/>
+  <rect x="252" y="194" width="64" height="16" rx="8" fill="url(#barBaked)"/>
+
+  <!-- Row U (..-), y=238 -->
+  <rect x="168" y="230" width="32" height="16" rx="8" fill="url(#barBaked)"/>
+  <rect x="224" y="230" width="32" height="16" rx="8" fill="url(#barBaked)"/>
+  <rect x="280" y="230" width="64" height="16" rx="8" fill="url(#barBaked)"/>
+
+  <!-- Row R (.-.), y=274 -->
+  <rect x="168" y="266" width="32" height="16" rx="8" fill="url(#barBaked)"/>
+  <rect x="224" y="266" width="64" height="16" rx="8" fill="url(#barBaked)"/>
+  <rect x="312" y="266" width="32" height="16" rx="8" fill="url(#barBaked)"/>
+
+  <!-- Row A (.-), y=310 -->
+  <rect x="196" y="302" width="32" height="16" rx="8" fill="url(#barBaked)"/>
+  <rect x="252" y="302" width="64" height="16" rx="8" fill="url(#barBaked)"/>
 </svg>
