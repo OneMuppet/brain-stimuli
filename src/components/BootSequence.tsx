@@ -1,53 +1,53 @@
-"use client";
+"use client"
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useState } from "react"
 
 export function BootSequence() {
-  const [stage, setStage] = useState<"logo" | "init" | "secure" | "done">("logo");
-  const [visible, setVisible] = useState(true);
+  const [stage, setStage] = useState<"logo" | "init" | "secure" | "done">("logo")
+  const [visible, setVisible] = useState(true)
 
   useEffect(() => {
     // Check if already seen this session
-    const hasBooted = sessionStorage.getItem("system-booted");
+    const hasBooted = sessionStorage.getItem("system-booted")
     if (hasBooted) {
-      setVisible(false);
-      return;
+      setVisible(false)
+      return
     }
 
     // Timeline: 0-4200ms logo animation → 4200-4800ms init → 4800-5400ms secure → 5400-5800ms fade
     // Animated logo: ring (1.6s) + morse code sequence (~2.6s from ring end) = ~4.2s total
-    const logoTimer = setTimeout(() => setStage("init"), 4200);
-    const initTimer = setTimeout(() => setStage("secure"), 4800);
-    const secureTimer = setTimeout(() => setStage("done"), 5400);
+    const logoTimer = setTimeout(() => setStage("init"), 4200)
+    const initTimer = setTimeout(() => setStage("secure"), 4800)
+    const secureTimer = setTimeout(() => setStage("done"), 5400)
     const doneTimer = setTimeout(() => {
-      setVisible(false);
-      sessionStorage.setItem("system-booted", "true");
-    }, 5800);
+      setVisible(false)
+      sessionStorage.setItem("system-booted", "true")
+    }, 5800)
 
     return () => {
-      clearTimeout(logoTimer);
-      clearTimeout(initTimer);
-      clearTimeout(secureTimer);
-      clearTimeout(doneTimer);
-    };
-  }, []);
+      clearTimeout(logoTimer)
+      clearTimeout(initTimer)
+      clearTimeout(secureTimer)
+      clearTimeout(doneTimer)
+    }
+  }, [])
 
   const handleSkip = () => {
-    setVisible(false);
-    sessionStorage.setItem("system-booted", "true");
-  };
+    setVisible(false)
+    sessionStorage.setItem("system-booted", "true")
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleSkip();
-    };
-    
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+      if (e.key === "Escape") handleSkip()
+    }
 
-  if (!visible) return null;
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  if (!visible) return null
 
   return (
     <AnimatePresence>
@@ -104,6 +104,5 @@ export function BootSequence() {
         </motion.p>
       </motion.div>
     </AnimatePresence>
-  );
+  )
 }
-

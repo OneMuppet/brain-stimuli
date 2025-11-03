@@ -24,6 +24,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: env.NEXTAUTH_SECRET,
   trustHost: true, // Required for Amplify
   debug: env.isDebugMode,
+  cookies: {
+    // Explicit cookie configuration to prevent PKCE parsing issues
+    pkceCodeVerifier: {
+      name: `${env.isProduction ? '__Secure-' : ''}authjs.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: env.isProduction,
+      },
+    },
+    sessionToken: {
+      name: `${env.isProduction ? '__Secure-' : ''}authjs.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: env.isProduction,
+      },
+    },
+  },
   providers: [
     Google({
       clientId: env.GOOGLE_CLIENT_ID,
